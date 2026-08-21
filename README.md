@@ -1,36 +1,44 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# viatura-check — Controle de Carga/Devolução de Viatura
 
-## Getting Started
+Sistema web **mobile-first** para registro de carga de viatura: checklist das condições do veículo,
+5 fotos e persistência em MongoDB. Formulário público (sem login) + área administrativa `/admin`.
 
-First, run the development server:
+## Stack
+
+Next.js 14 (App Router) · TypeScript · MongoDB (GridFS) · Tailwind CSS v4 · shadcn/ui · Server
+Actions · PWA.
+
+> Detalhes completos da stack e decisões de arquitetura em [docs/04-arquitetura.md](./docs/04-arquitetura.md).
+
+## Documentação
+
+Toda a documentação do projeto vive em [`docs/`](./docs/README.md):
+
+- **Base/diretrizes:** [docs/GUIA-DE-ESCRITA.md](./docs/GUIA-DE-ESCRITA.md) — regras para escrever
+  e manter a documentação.
+- **Funcionalidades implementadas:** [docs/02-funcionalidades-implementadas.md](./docs/02-funcionalidades-implementadas.md)
+- **Roadmap (funcionalidades futuras):** [docs/03-funcionalidades-futuras.md](./docs/03-funcionalidades-futuras.md)
+
+## Começando
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abra [http://localhost:3000](http://localhost:3000). Configure `MONGODB_URI` no `.env.local`
+(veja [docs/07-guia-de-desenvolvimento.md](./docs/07-guia-de-desenvolvimento.md)).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Comando | Descrição |
+|---|---|
+| `npm run dev` | Servidor de desenvolvimento |
+| `npm run build` | Build de produção (gera o service worker do PWA) |
+| `npm start` | Servidor de produção |
+| `npm run lint` | ESLint |
 
-## Learn More
+## Estado atual
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **Fase 1:** formulário público, admin por link direto, sem autenticação.
+- Ver o estado completo em [docs/README.md](./docs/README.md).
