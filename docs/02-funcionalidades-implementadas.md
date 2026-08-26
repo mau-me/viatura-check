@@ -1,72 +1,117 @@
 # 02 — Funcionalidades Implementadas
 
 > Registro de todas as funcionalidades **já existentes** no sistema, organizadas por módulo, com
-> referência real aos arquivos do código. Tudo aqui está `✅ Implementado` (ver
-> [GUIA-DE-ESCRITA.md](./GUIA-DE-ESCRITA.md#35-status-de-funcionalidades)).
+> referência real aos arquivos do código. Tudo aqui está `✅ Implementado`.
 
 ---
 
 ## Sumário
 
-1. [Formulário público de carga (`/`)](#1-formulário-público-de-carga-)
-2. [Captura de fotos](#2-captura-de-fotos)
-3. [Checklist de verificação](#3-checklist-de-verificação)
-4. [Submissão e persistência (Server Actions + GridFS)](#4-submissão-e-persistência-server-actions--gridfs)
-5. [Página de sucesso (`/sucesso`)](#5-página-de-sucesso-succes)
-6. [Administração (`/admin`)](#6-administração-admin)
-7. [Detalhe do registro (`/admin/[id]`)](#7-detalhe-do-registro-adminid)
-8. [Servir fotos via API (`/api/photos/[id]`)](#8-servir-fotos-via-api-apiphotosid)
-9. [PWA e tema](#9-pwa-e-tema)
+1. [Dashboard do policial (`/`)](#1-dashboard-do-policial-)
+2. [Carga de viatura (`/carga`)](#2-carga-de-viatura-carga)
+3. [Devolução de viatura (`/devolucao/[id]`)](#3-devolução-de-viatura-devolucãoid)
+4. [Captura de fotos](#4-captura-de-fotos)
+5. [Checklist de verificação](#5-checklist-de-verificação)
+6. [Submissão e persistência (Server Actions + GridFS)](#6-submissão-e-persistência-server-actions--gridfs)
+7. [Página de sucesso (`/sucesso`)](#7-página-de-sucesso-succes)
+8. [Autenticação e login](#8-autenticação-e-login)
+9. [Administração (`/admin`)](#9-administração-admin)
+10. [Detalhe do registro (`/admin/[id]`)](#10-detalhe-do-registro-adminid)
+11. [Gerenciamento de usuários](#11-gerenciamento-de-usuários)
+12. [Servir fotos via API (`/api/photos/[id]`)](#12-servir-fotos-via-api-apiphotosid)
+13. [PWA e tema](#13-pwa-e-tema)
 
 ---
 
-## 1. Formulário público de carga (`/`)
+## 1. Dashboard do policial (`/`)
 
 **Status:** ✅ Implementado
-**Requisitos:** RF-01, RF-02, RF-03, RF-04, RF-07, RNF-01, RNF-06, RNF-07
+**Requisitos:** RF-01, RF-11
+**Acesso:** autenticado
 
-**O que faz:** a rota `/` exibe, sem login, o formulário completo de carga. É dividido em cards por
-seção: **Viatura** (placa + kilometragem), **Policiais** (responsável, entregou, recebeu),
-**Verificação** (checklist), **Fotos** (5) e **Observações**.
+**O que faz:** a rota `/` exibe o dashboard do policial logado. Mostra:
+- Card com viatura em aberto (se houver) + botão "Devolver Viatura"
+- Botão "Nova Carga" (desabilitado se viatura em aberto)
+- Lista de registros anteriores do policial (histórico)
 
 **Arquivos:**
-- `app/page.tsx` — página client do formulário, gerencia estado das fotos e submissão
-- `components/app/OfficerFields.tsx` — campos de patente, nome e matrícula (reutilizado 3×)
-- `components/ui/card.tsx`, `components/ui/input.tsx`, `components/ui/label.tsx`, `components/ui/textarea.tsx`, `components/ui/button.tsx` — primitivas de UI
+- `app/page.tsx` — server wrapper com autenticação
+- `components/app/UserDashboardClient.tsx` — client component do dashboard
 
-**Detalhes de comportamento:**
-- Placa/prefixo normalizado no servidor (maiúsculas, sem caracteres especiais) — `actions/handover-actions.ts:23`.
-- Matrícula **obrigatória** apenas para o responsável pela carga — `components/app/OfficerFields.tsx:30`.
-- Botão de envio fica `sticky bottom-4` (sempre visível no celular) e mostra estado de loading
-  (`Loader2`) durante o envio — `app/page.tsx:146`.
-- Inputs numéricos usam `type="number"` + `inputMode="numeric"` (teclado correto no celular).
+**Regras de negócio:**
+- Um policial não pode ter mais de 1 viatura em aberto simultaneamente
+- A viatura em aberto é exibida com placa, km inicial e data da carga
 
 ---
 
-## 2. Captura de fotos
+## 2. Carga de viatura (`/carga`)
+
+**Status:** ✅ Implementado
+**Requisitos:** RF-01, RF-02, RF-03, RF-05, RF-07, RF-08
+**Acesso:** autenticado
+
+**O que faz:** formulário de saída da viatura. Divide-se em cards:
+- **Viatura** (placa + km inicial — sem km final)
+- **Policial que Entregou** (patente + nome — sem matrícula)
+- **Verificação** (checklist 7 itens)
+- **Fotos** (5 obrigatórias)
+- **Observações** (opcional)
+
+**Arquivos:**
+- `app/carga/page.tsx` — server wrapper com autenticação
+- `components/app/DepartureForm.tsx` — client component do formulário
+
+**Detalhes:**
+- O policial logado é registrado automaticamente como `departureOfficer` (matrícula do login)
+- Verificação: policial não pode criar carga se já tem viatura em aberto
+- Verificação: viatura não pode ter registro aberto (por qualquer policial)
+- Após submit → redirect para `/sucesso?id=<id>&phase=departure`
+
+---
+
+## 3. Devolução de viatura (`/devolucao/[id]`)
+
+**Status:** ✅ Implementado
+**Requisitos:** RF-01, RF-02
+**Acesso:** autenticado (apenas o policial que fez a carga)
+
+**O que faz:** formulário de retorno da viatura. Divide-se em:
+- Dados da carga (placa + km inicial — read-only)
+- **Km Final** (obrigatório, ≥ km inicial)
+- **Policial que Recebeu** (patente + nome)
+- **Fotos** (5 obrigatórias — mesmas posições)
+- **Observações** (opcional)
+
+**Arquivos:**
+- `app/devolucao/[id]/page.tsx` — server wrapper com autenticação
+- `components/app/ReturnForm.tsx` — client component do formulário
+
+**Detalhes:**
+- Verificação: registro deve existir, estar aberto, e pertencer ao policial logado
+- Após submit → redirect para `/sucesso?id=<id>&phase=return`
+
+---
+
+## 4. Captura de fotos
 
 **Status:** ✅ Implementado
 **Requisitos:** RF-08, RNF-01, RNF-04
 
-**O que faz:** exibe 5 áreas de captura (Frente, Fundo, Lateral Esquerda, Lateral Direita, Painel),
-uma por foto obrigatória. No celular abre a câmera traseira (`capture="environment"`); também
-permite escolher da galeria. Há pré-visualização antes do envio e botão para remover a foto.
+**O que faz:** exibe áreas de captura (Frente, Fundo, Lateral Esquerda, Lateral Direita, Painel).
+No celular abre a câmera traseira (`capture="environment"`); também permite escolher da galeria.
+Há pré-visualização antes do envio e botão para remover a foto.
 
 **Arquivos:**
 - `components/app/PhotoCapture.tsx` — componente de captura
-- `lib/validation.ts:13` — constante `PHOTO_KEYS` (define as 5 posições e labels)
+- `lib/validation.ts` — constante `PHOTO_KEYS` (define as 5 posições e labels)
 
-**Detalhes de comportamento:**
-- Ao selecionar um arquivo, gera `URL.createObjectURL` para pré-visualização e revoga o objeto
-  anterior (evita vazamento de memória) — `app/page.tsx:27`.
-- O arquivo só é anexado ao `FormData` na hora do submit — `app/page.tsx:38`.
-
-> **Pendência conhecida (futuro):** as fotos **não são comprimidas/redimensionadas no cliente**
-> ainda. Ver [03-funcionalidades-futuras.md](./03-funcionalidades-futuras.md) — Compressão de fotos.
+**Uso:**
+- Na carga: 5 fotos com prefixo `photo_`
+- Na devolução: 5 fotos com prefixo `return_photo_`
 
 ---
 
-## 3. Checklist de verificação
+## 5. Checklist de verificação
 
 **Status:** ✅ Implementado
 **Requisitos:** RF-05, RF-06
@@ -76,9 +121,9 @@ group). Quando "Com Alteração" é selecionado, exibe uma caixa de texto para d
 
 **Arquivos:**
 - `components/app/ChecklistItem.tsx` — item do checklist (radio + textarea condicional)
-- `lib/validation.ts:3` — constante `CHECKLIST_ITEMS` (7 itens e labels)
+- `lib/validation.ts` — constante `CHECKLIST_ITEMS` (7 itens e labels)
 
-**Itens do checklist (constante `CHECKLIST_ITEMS`):**
+**Itens do checklist:**
 1. Óleo do Motor (`oleo_motor`)
 2. Arrefecimento (`arrefecimento`)
 3. Condições dos Pneus (`pneus`)
@@ -89,151 +134,171 @@ group). Quando "Com Alteração" é selecionado, exibe uma caixa de texto para d
 
 ---
 
-## 4. Submissão e persistência (Server Actions + GridFS)
+## 6. Submissão e persistência (Server Actions + GridFS)
 
 **Status:** ✅ Implementado
 **Requisitos:** RF-09, RNF-04, RNF-05
 
-**O que faz:** ao submeter, o cliente monta um `FormData` (campos + fotos) e chama a Server Action
-`submitHandoverAction`. O servidor normaliza a placa, valida com Zod, faz upload das 5 fotos para o
-GridFS e grava um documento na coleção `handovers`.
+**Server Actions:**
+
+| Action | Descrição |
+|---|---|
+| `createDepartureAction(formData)` | Cria registro de carga (status "aberto") |
+| `completeReturnAction(id, formData)` | Finaliza devolução (status "fechado") |
+| `adminCloseHandoverAction(id)` | Admin fecha registro em aberto |
+| `getOpenHandoverByOfficer(matricula)` | Busca registro aberto de um policial |
+| `getHandoversAction(query?, status?)` | Lista registros com filtro |
+| `getHandoverByIdAction(id)` | Retorna registro completo |
+| `deleteHandoverAction(id)` | Exclui registro e fotos |
 
 **Arquivos:**
-- `actions/handover-actions.ts:21` — `submitHandoverAction` (submissão)
-- `lib/validation.ts:33` — `handoverSchema` (validação Zod)
-- `lib/mongodb.ts` — `connectToDatabase()` (conexão singleton)
-- `lib/gridfs.ts:5` — `uploadPhoto` (upload para GridFS)
+- `actions/handover-actions.ts` — todas as actions
+- `lib/validation.ts` — schemas `departureSchema` e `returnSchema`
+- `lib/mongodb.ts` — `connectToDatabase()`
+- `lib/gridfs.ts` — `uploadPhoto`, `deletePhoto`
 
-**Validações do servidor (`lib/validation.ts`):**
-- Placa/prefixo: obrigatório, 3–15 caracteres, normalizado em maiúsculas sem símbolos.
-- Kilometragem: numérica inteira ≥ 0; **final ≥ inicial** (refine do Zod).
-- Matrícula do responsável: obrigatória; demais: opcional.
-- Checklist: cada item deve ser `ok` ou `alteracao` (enforced no loop de `handover-actions.ts:53`).
-- Observação por item: máx. 500 caracteres; "Outras informações": máx. 2000.
-
-**Fotos:**
-- Obrigatórias (todas as 5); retorna erro se faltar alguma — `actions/handover-actions.ts:73`.
-- Tamanho máximo por foto: `MAX_PHOTO_SIZE_MB` (padrão 2 MB) — `actions/handover-actions.ts:9`.
-- Upload com nome `${plate}_${key}.jpg` e contentType em `metadata` — `lib/gridfs.ts:12`.
-
-**Fluxo resumido:**
-1. Cliente monta `FormData` e chama a action via `useTransition` — `app/page.tsx:43`.
-2. Servidor normaliza e valida os dados (Zod).
-3. Faz upload das 5 fotos no bucket GridFS `photos`.
-4. Insere o documento em `handovers` com `createdAt`/`updatedAt`.
-5. Revalida a rota `/admin` e retorna `{ success: true, id }`.
-6. Cliente exibe toast de sucesso e redireciona para `/sucesso?id=...`.
-
-**Modelo de dados completo:** [05-modelagem-de-dados.md](./05-modelagem-de-dados.md)
+**Regras de negócio:**
+- Um policial = uma viatura (não pode ter 2 abertas)
+- Uma viatura = um registro aberto
+- Km final ≥ Km inicial
+- Fotos obrigatórias nas duas fases (5 + 5)
+- Admin pode fechar registros em aberto
 
 ---
 
-## 5. Página de sucesso (`/sucesso`)
+## 7. Página de sucesso (`/sucesso`)
 
 **Status:** ✅ Implementado
 **Requisitos:** RF-09
 
-**O que faz:** página de confirmação após a submissão. Exibe o identificador do registro (via
-`?id=...`) e oferece botões "Nova Carga" e "Ver registros (admin)".
+**Query params:** `?id=<ObjectId>&phase=departure|return`
+
+**O que faz:** exibe mensagem conforme a fase:
+- **Carga:** "Carga registrada!" + lembrete de devolução
+- **Devolução:** "Devolução registrada!"
 
 **Arquivos:**
 - `app/sucesso/page.tsx`
 
 ---
 
-## 6. Administração (`/admin`)
+## 8. Autenticação e login
+
+**Status:** ✅ Implementado
+**Requisitos:** RF-11
+
+**O que faz:** sistema completo de autenticação com fluxo 3 estados:
+- Estado A: matricula → verificar se existe
+- Estado B: senha (login) ou primeiro acesso (criar senha)
+- Estado C: solicitação de reset de senha
+
+**Arquivos:**
+- `app/login/page.tsx` — página de login (3 estados)
+- `lib/jwt.ts` — JWT utilities (jose, edge-compatible)
+- `lib/auth.ts` — CRUD de usuários, bcrypt
+- `actions/auth-actions.ts` — server actions de auth
+- `components/app/AuthContext.tsx` — contexto de autenticação
+- `components/app/SessionProvider.tsx` — provider de sessão
+- `middleware.ts` — proteção de rotas
+
+**Regras:**
+- Cookie `viatura_session` (httpOnly, sameSite, secure)
+- Todas as rotas protegidas exceto `/login`, `api`, static assets
+- Admin só acessa `/admin`
+
+---
+
+## 9. Administração (`/admin`)
 
 **Status:** ✅ Implementado
 **Requisitos:** RF-10, RNF-01, RNF-07
+**Acesso:** admin apenas
 
-**O que faz:** lista os registros enviados (mais recentes primeiro, limite de 200), com busca por
-placa ou nome do responsável, exclusão com confirmação (`AlertDialog`) e navegação para o detalhe.
-Na fase 1 é acessível **por link direto, sem login**.
+**O que faz:** duas tabs:
+- **Registros:** lista com filtro (Todos / Em Aberto / Fechados), busca, exclusão, fechamento
+- **Usuários:** CRUD de usuários
 
 **Arquivos:**
-- `app/admin/page.tsx` — página de listagem (client)
-- `actions/handover-actions.ts:102` — `getHandoversAction` (lista com filtro)
-- `actions/handover-actions.ts:150` — `deleteHandoverAction` (exclui registro + fotos)
-- `components/ui/alert-dialog.tsx` — diálogo de confirmação de exclusão
-- `components/ui/badge.tsx` — badge "Com Alteração"
-- `components/ui/skeleton.tsx`, `components/ui/scroll-area.tsx` — componentes disponíveis para UI (alguns ainda não usados)
-
-**Detalhes de comportamento:**
-- Busca: filtro `$or` em `plate` e `officer.nome` com regex case-insensitive — `actions/handover-actions.ts:105`.
-- Exclusão: remove as 5 fotos do GridFS e depois o documento — `actions/handover-actions.ts:157`.
-- Cada card exibe placa, nome/matrícula do responsável, data (formatada com `date-fns` locale `ptBR`)
-  e kilometragem; badge "Com Alteração" quando há item alterado.
-
-> **Pendência conhecida (futuro):** sem autenticação/PIN na fase 1 — o `/admin` fica exposto a quem
-> souber o link. Ver [03-funcionalidades-futuras.md](./03-funcionalidades-futuras.md) — Autenticação
-> e PIN de acesso.
+- `app/admin/page.tsx` — server page com tabs
+- `app/admin/layout.tsx` — server layout com role guard
+- `components/app/AdminLayoutClient.tsx` — admin shell
+- `components/app/AdminRecordsClient.tsx` — listagem de registros
+- `components/app/UserManagementClient.tsx` — gerenciamento de usuários
 
 ---
 
-## 7. Detalhe do registro (`/admin/[id]`)
+## 10. Detalhe do registro (`/admin/[id]`)
 
 **Status:** ✅ Implementado
 **Requisitos:** RF-10, RNF-07
+**Acesso:** admin apenas
 
-**O que faz:** exibe o registro completo: dados dos policiais, kilometragem, observações, checklist
-(com observações de itens alterados) e as fotos em galeria (via `/api/photos/[id]`).
+**O que faz:** exibe o registro completo com duas seções:
+- **Carga (Saída):** policial, quem entregou, km inicial, checklist, fotos, observações
+- **Devolução (Entrada):** policial que recebeu, km final, fotos, observações
 
 **Arquivos:**
-- `app/admin/[id]/page.tsx` — página de detalhe (client)
-- `actions/handover-actions.ts:137` — `getHandoverByIdAction`
+- `app/admin/[id]/page.tsx` — server wrapper com role guard
+- `components/app/HandoverDetailClient.tsx` — client component do detalhe
 
 ---
 
-## 8. Servir fotos via API (`/api/photos/[id]`)
+## 11. Gerenciamento de usuários
+
+**Status:** ✅ Implementado
+**Requisitos:** RF-11
+**Acesso:** admin apenas
+
+**O que faz:** CRUD completo de usuários com:
+- Tabela (desktop) e cards (mobile) — responsivo
+- Formulário em Dialog (desktop) / Drawer (mobile)
+- Busca por nome, matrícula ou patente
+- Exclusão com confirmação (AlertDialog)
+- Toggle de status ativo/inativo
+
+**Arquivos:**
+- `components/app/UserManagementClient.tsx` — orchestrador
+- `components/app/UserForm.tsx` — formulário (Dialog/Drawer)
+- `components/app/UserTable.tsx` — tabela desktop
+- `components/app/UserCard.tsx` — card mobile
+- `hooks/use-media-query.tsx` — detecção responsiva
+
+---
+
+## 12. Servir fotos via API (`/api/photos/[id]`)
 
 **Status:** ✅ Implementado
 **Requisitos:** RNF-04
 
 **O que faz:** route handler que lê uma foto do GridFS pelo `ObjectId` e a devolve com o
-`Content-Type` correto e cache de 1 ano (`immutable`). Valida o formato do ID antes de consultar.
+`Content-Type` correto e cache de 1 ano (`immutable`).
 
 **Arquivos:**
 - `app/api/photos/[id]/route.ts`
-- `lib/gridfs.ts:25` — `getPhoto`
-
-**Detalhes de comportamento:**
-- ID inválido ou foto inexistente → `404`.
-- `Cache-Control: public, max-age=31536000, immutable` (fotos são imutáveis).
-- As fotos **só** são servidas por esta API interna (nunca por URL pública arbitrária).
+- `lib/gridfs.ts` — `getPhoto`
 
 ---
 
-## 9. PWA e tema
+## 13. PWA e tema
 
 **Status:** ✅ Implementado
 **Requisitos:** RNF-02, RNF-07
 
-**O que faz:** o app é instalável como PWA (manifest + service worker gerado pelo `next-pwa`) e
-suporta tema claro/escuro via `next-themes` (padrão: sistema).
+**O que faz:** o app é instalável como PWA (manifest + service worker) e suporta tema claro/escuro
+via `next-themes` (padrão: sistema).
 
 **Arquivos:**
-- `next.config.mjs` — configuração do `next-pwa` (dest `public`, register, skipWaiting)
-- `public/manifest.json` — manifesto PWA (nome, ícones 192/512, standalone)
-- `public/icon-192.png`, `public/icon-512.png` — ícones gerados
-- `public/sw.js` — service worker gerado pelo `next-pwa` em build
-- `app/layout.tsx` — `<ThemeProvider>` (next-themes), `<Toaster />` (sonner), metas PWA
-- `components/ui/sonner.tsx` — wrapper do toaster com tema
-
-**Detalhes de comportamento:**
-- Idioma e locale: `lang="pt-BR"` no `<html>` — `app/layout.tsx:47`.
-- Fontes: Geist (Sans e Mono) locais via `next/font/local` — `app/layout.tsx:8`.
-- O Toaster do sonner é montado uma única vez no layout raiz.
+- `next.config.mjs` — configuração do `next-pwa`
+- `public/manifest.json` — manifesto PWA
+- `public/icon-192.png`, `public/icon-512.png` — ícones
+- `app/layout.tsx` — `<ThemeProvider>`, `<Toaster />`, metas PWA
 
 ---
 
 ## Componentes de UI disponíveis (shadcn/ui)
 
-Todos em `components/ui/`, prontos para uso (alguns ainda não utilizados pelas telas atuais):
+Todos em `components/ui/`:
 
-`alert`, `alert-dialog`, `badge`, `button`, `card`, `checkbox`, `dialog`, `drawer`, `input`, `label`,
-`radio-group`, `scroll-area`, `select`, `separator`, `sheet`, `skeleton`, `sonner`, `switch`,
-`table`, `textarea`.
-
-> Padrão do projeto: em mobile usar `Drawer` (abre de baixo) e em desktop `Dialog`/`AlertDialog`
-> (ver `hooks/use-media-query.tsx` — ainda não criado). Ver
-> [04-arquitetura.md](./04-arquitetura.md).
+`alert`, `alert-dialog`, `avatar`, `badge`, `button`, `card`, `checkbox`, `dialog`, `drawer`,
+`dropdown-menu`, `input`, `label`, `radio-group`, `scroll-area`, `select`, `separator`, `sheet`,
+`skeleton`, `sonner`, `switch`, `table`, `tabs`, `textarea`.

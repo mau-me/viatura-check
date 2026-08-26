@@ -7,32 +7,56 @@
 
 ## 1. Páginas (App Router)
 
-### 1.1 `/` — Formulário público de carga
+### 1.1 `/` — Dashboard do policial
 
-- **Tipo:** Client Component (`app/page.tsx`)
-- **Acesso:** público (sem login) — RF-01
-- **Conteúdo:** formulário em cards — Viatura, Policiais, Checklist, Fotos, Observações.
+- **Tipo:** Server Component → MainLayoutClient → UserDashboardClient (`app/page.tsx`)
+- **Acesso:** autenticado (qualquer usuário logado)
+- **Conteúdo:**
+  - Card com viatura em aberto (se houver) + botão "Devolver"
+  - Botão "Nova Carga" (desabilitado se viatura em aberto)
+  - Lista de registros anteriores (histórico do policial)
 
-### 1.2 `/sucesso` — Confirmação
+### 1.2 `/carga` — Formulário de carga (saída)
+
+- **Tipo:** Server Component → MainLayoutClient → DepartureForm (`app/carga/page.tsx`)
+- **Acesso:** autenticado
+- **Conteúdo:** formulário — Viatura (placa + km inicial), Policial que Entregou, Checklist, Fotos, Observações
+- **Regras:** verificar se policial já tem viatura em aberto (redireciona para `/`)
+- **After submit:** redireciona para `/sucesso?id=<id>&phase=departure`
+
+### 1.3 `/devolucao/[id]` — Formulário de devolução (retorno)
+
+- **Tipo:** Server Component → MainLayoutClient → ReturnForm (`app/devolucao/[id]/page.tsx`)
+- **Acesso:** autenticado (apenas o policial que fez a carga)
+- **Conteúdo:** formulário — Km Final, Policial que Recebeu, Fotos, Observações
+- **Regras:** verificar se registro pertence ao policial e está aberto
+- **After submit:** redireciona para `/sucesso?id=<id>&phase=return`
+
+### 1.4 `/sucesso` — Confirmação
 
 - **Tipo:** Server Component (`app/sucesso/page.tsx`)
-- **Query param:** `?id=<ObjectId>` (opcional) — exibe o identificador do registro.
-- **Ações:** botões "Nova Carga" (`/`) e "Ver registros (admin)" (`/admin`).
+- **Query params:** `?id=<ObjectId>&phase=departure|return`
+- **Conteúdo:** mensagem conforme fase + link para dashboard
 
-### 1.3 `/admin` — Listagem e gestão
+### 1.5 `/admin` — Administração
 
-- **Tipo:** Client Component (`app/admin/page.tsx`)
-- **Acesso:** por link direto (fase 1, sem login) — RF-10
-- **Funcionalidades:** lista registros (limite 200), busca por placa/nome, exclusão com confirmação,
-  navegação para detalhe.
+- **Tipo:** Server Component → AdminLayoutClient (`app/admin/page.tsx`)
+- **Acesso:** admin apenas (role `admin`)
+- **Tabs:**
+  - **Registros:** lista com filtro (Todos / Em Aberto / Fechados), busca, exclusão, fechamento
+  - **Usuários:** CRUD de usuários
 
-### 1.4 `/admin/[id]` — Detalhe do registro
+### 1.6 `/admin/[id]` — Detalhe do registro
 
-- **Tipo:** Client Component (`app/admin/[id]/page.tsx`)
-- **Acesso:** por link direto (fase 1)
-- **Conteúdo:** dados dos policiais, kilometragem, observações, checklist com observações de
-  alterações e fotos (via `/api/photos/[id]`).
-- **Parâmetro:** `[id]` = `ObjectId` do registro.
+- **Tipo:** Server Component → AdminLayoutClient → HandoverDetailClient (`app/admin/[id]/page.tsx`)
+- **Acesso:** admin apenas
+- **Conteúdo:** duas seções (Carga + Devolução), checklist, fotos de ambas as fases
+
+### 1.7 `/login` — Login
+
+- **Tipo:** Client Component (`app/login/page.tsx`)
+- **Acesso:** público
+- **Conteúdo:** fluxo 3 estados (matricula → senha/primeiro acesso → solicitação de reset)
 
 ---
 
@@ -44,62 +68,56 @@
 - **Parâmetro:** `[id]` = `ObjectId` da foto no GridFS.
 - **Resposta:**
   - `200` — imagem com `Content-Type` do arquivo e `Cache-Control: public, max-age=31536000, immutable`.
-  - `404` — `Foto não encontrada` (ID inválido ou arquivo inexistente).
-- **Uso:** `<img src={/api/photos/${pid}} />` nas telas de admin.
+  - `404` — `Foto não encontrada`.
+
+### 2.2 `GET /api/auth/me`
+
+- **Arquivo:** `app/api/auth/me/route.ts`
+- **Retorna:** dados do usuário autenticado a partir do cookie de sessão.
+
+### 2.3 `POST /api/auth/logout`
+
+- **Arquivo:** `app/api/auth/logout/route.ts`
+- **Ação:** remove cookie de sessão.
 
 ---
 
-## 3. Server Actions (`actions/handover-actions.ts`)
+## 3. Server Actions
 
-Todas usam `'use server'` e são chamadas diretamente pelo cliente.
+### 3.1 `actions/handover-actions.ts`
 
-### 3.1 `submitHandoverAction(formData: FormData)`
+| Action | Descrição |
+|---|---|
+| `createDepartureAction(formData)` | Cria registro de carga (status "aberto") |
+| `completeReturnAction(id, formData)` | Finaliza devolução (status "fechado") |
+| `adminCloseHandoverAction(id)` | Admin fecha registro em aberto |
+| `getOpenHandoverByOfficer(matricula)` | Busca registro aberto de um policial |
+| `getHandoversAction(query?, status?)` | Lista registros com filtro (abertos/fechados/todos) |
+| `getHandoverByIdAction(id)` | Retorna registro completo |
+| `deleteHandoverAction(id)` | Exclui registro e fotos |
 
-- **Função:** cria um registro de carga (dados + 5 fotos).
-- **Entrada (`FormData`):**
-  | Campo | Descrição |
-  |---|---|
-  | `plate` | Placa/prefixo (normalizado) |
-  | `officer_patente` / `officer_nome` / `officer_matricula` | Responsável pela carga |
-  | `delivered_patente` / `delivered_nome` / `delivered_matricula` | Quem entregou |
-  | `received_patente` / `received_nome` / `received_matricula` | Quem recebeu |
-  | `km_initial` / `km_final` | Kilometragem |
-  | `check_<item>` | Status de cada item do checklist (`ok`/`alteracao`) |
-  | `obs_<item>` | Observação por item (quando `alteracao`) |
-  | `observations` | Outras informações |
-  | `photo_frente`, `photo_fundo`, `photo_lateral_esquerda`, `photo_lateral_direita`, `photo_painel` | Arquivos (File) |
-- **Retorno:** `{ success: true, id }` ou `{ error: string }`.
-- **Efeitos colaterais:** upload GridFS das fotos, insert em `handovers`, `revalidatePath('/admin')`.
+### 3.2 `actions/auth-actions.ts`
 
-### 3.2 `getHandoversAction(query = '')`
-
-- **Função:** lista registros (mais recentes primeiro, limite 200).
-- **Entrada:** `query` opcional — busca por `plate` ou `officer.nome` (regex case-insensitive).
-- **Retorno:** `{ success: true, records: [...] }` ou `{ error }`.
-- **Formato de cada record:** `_id`, `plate`, `officer`, `kilometers`, `createdAt`,
-  `hasAlteration` (boolean).
-
-### 3.3 `getHandoverByIdAction(id: string)`
-
-- **Função:** retorna um registro completo.
-- **Entrada:** `id` (ObjectId).
-- **Retorno:** `{ success: true, record }` (documento completo com `_id` como string) ou
-  `{ error }` (ID inválido / não encontrado).
-
-### 3.4 `deleteHandoverAction(id: string)`
-
-- **Função:** exclui um registro e suas fotos.
-- **Entrada:** `id` (ObjectId).
-- **Retorno:** `{ success: true }` ou `{ error }`.
-- **Efeitos colaterais:** remove as 5 fotos do GridFS, remove o documento de `handovers`,
-  `revalidatePath('/admin')`.
+| Action | Descrição |
+|---|---|
+| `loginAction(prev, formData)` | Login com fluxo 3 estados |
+| `setupPasswordAction(prev, formData)` | Primeiro acesso — criar senha |
+| `requestPasswordResetAction(prev, formData)` | Solicitar reset de senha |
+| `logoutAction()` | Limpa sessão |
+| `createUserAction(prev, formData)` | Cria usuário (admin) |
+| `updateUserAction(id, prev, formData)` | Atualiza usuário (admin) |
+| `deleteUserAction(id)` | Exclui usuário (admin) |
+| `listUsersAction(query?, page?, limit?)` | Lista usuários (admin) |
+| `changePasswordAction(prev, formData)` | Altera senha (logueado) |
+| `adminClearUserPasswordAction(id)` | Admin limpa senha de usuário |
 
 ---
 
-## 4. Rotas planejadas (futuro)
+## 4. Middleware
 
-| Rota | Status | Descrição |
-|---|---|---|
-| `/api/export` | 🔮 Futuro | Exportar CSV dos registros (ver roadmap — Exportação CSV) |
-| `middleware.ts` (proteção `/admin`) | 🔮 Futuro | Autenticação (RF-11) |
-| `/login` (ou `/admin/login`) | 🔮 Futuro | Login do admin |
+- **Arquivo:** `middleware.ts`
+- **Matcher:** todas as rotas exceto `api`, `_next/*`, `favicon.ico`
+- **Regras:**
+  - `/login` com sessão válida → redireciona para `/`
+  - Rota protegida sem sessão → redireciona para `/login`
+  - `/admin` sem role `admin` → redireciona para `/`
