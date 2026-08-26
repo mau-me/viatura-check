@@ -8,6 +8,9 @@ export const CHECKLIST_ITEMS = [
   { key: 'freios', label: 'Freios' },
   { key: 'identificacao_visual', label: 'Identificação Visual' },
   { key: 'limpeza', label: 'Limpeza' },
+  { key: 'iluminacao', label: 'Iluminação (Farol, Lanterna e Piscas)' },
+  { key: 'ad_blue', label: 'AD Blue (ARLA)' },
+  { key: 'giroflex_sirene', label: 'Giroflex e Sirene' },
 ] as const
 
 export const PHOTO_KEYS = [
@@ -20,36 +23,39 @@ export const PHOTO_KEYS = [
 
 const statusSchema = z.enum(['ok', 'alteracao'])
 
-const officerSchema = z.object({
+const officerLoginSchema = z.object({
   patente: z.string().trim().min(1, 'Patente obrigatória').max(30),
   nome: z.string().trim().min(1, 'Nome obrigatório').max(120),
-  matricula: z.string().trim().max(20).optional().or(z.literal('')),
-})
-
-const officerRequiredMatriculaSchema = officerSchema.extend({
   matricula: z.string().trim().min(1, 'Matrícula obrigatória').max(20),
 })
 
-export const handoverSchema = z.object({
-  plate: z.string().trim().min(3, 'Placa/prefixo obrigatório').max(15),
-  officer: officerRequiredMatriculaSchema,
-  deliveringOfficer: officerSchema,
-  receivingOfficer: officerSchema,
-  kilometers: z
-    .object({
-      initial: z.coerce.number().int().min(0, 'Kilometragem inicial inválida'),
-      final: z.coerce.number().int().min(0, 'Kilometragem final inválida'),
-    })
-    .refine((k) => k.final >= k.initial, {
-      message: 'Kilometragem final não pode ser menor que a inicial',
-      path: ['final'],
-    }),
-  checklist: z.record(z.string(), statusSchema),
-  checklistObservations: z.record(z.string(), z.string().trim().max(500)).optional(),
-  observations: z.string().trim().max(2000).optional().or(z.literal('')),
+const officerMinimalSchema = z.object({
+  patente: z.string().trim().min(1, 'Patente obrigatória').max(30),
+  nome: z.string().trim().min(1, 'Nome obrigatório').max(120),
 })
 
-export type HandoverInput = z.infer<typeof handoverSchema>
+export const departureSchema = z.object({
+  plate: z.string().trim().min(3, 'Placa/prefixo obrigatório').max(15),
+  departureOfficer: officerLoginSchema,
+  deliveringOfficer: officerMinimalSchema,
+  garrisonCommander: officerMinimalSchema,
+  serviceType: z.enum(['ordinario', 'intensificacao_tatica', 'adm', 'outros']),
+  serviceTypeOther: z.string().trim().max(200).optional().or(z.literal('')),
+  km_initial: z.coerce.number().int().min(0, 'Kilometragem inicial inválida'),
+  departureChecklist: z.record(z.string(), statusSchema),
+  departureChecklistObs: z.record(z.string(), z.string().trim().max(500)).optional(),
+  departureObservations: z.string().trim().max(2000).optional().or(z.literal('')),
+})
+
+export type DepartureInput = z.infer<typeof departureSchema>
+
+export const returnSchema = z.object({
+  km_final: z.coerce.number().int().min(0, 'Kilometragem final inválida'),
+  returnOfficer: officerMinimalSchema,
+  returnObservations: z.string().trim().max(2000).optional().or(z.literal('')),
+})
+
+export type ReturnInput = z.infer<typeof returnSchema>
 
 export const loginSchema = z.object({
   matricula: z.string().trim().min(1, 'Matrícula obrigatória'),

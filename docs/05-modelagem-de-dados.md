@@ -10,67 +10,104 @@
 - Nome do banco: `viatura` (definido em `lib/mongodb.ts:31`).
 - Conexão: `MONGODB_URI` via variável de ambiente (`lib/mongodb.ts:3`).
 
-## 2. Coleção `handovers` — registros de carga
+## 2. Coleção `handovers` — registros de carga/devolução
 
-Estrutura do documento gravado por `submitHandoverAction`
-(`actions/handover-actions.ts:86`):
+Estrutura do documento com fluxo de duas fases (carga + devolução):
 
 ```js
 {
   _id: ObjectId,
+
+  // --- STATUS ---
+  status: "aberto" | "fechado",
+
+  // --- DADOS DA VIATURA ---
   plate: "ABC1D23",                 // normalizado: maiúsculas, sem caracteres especiais
-  officer: {                          // responsável pela carga (matrícula obrigatória)
+
+  // --- FASE 1: CARGA (SAÍDA) ---
+  departureOfficer: {               // policial que fez a carga (matrícula do login)
     patente: "Sd",
     nome: "João da Silva",
     matricula: "123456"
   },
-  deliveringOfficer: {               // entregou a viatura (matrícula opcional)
+  deliveringOfficer: {              // quem entregou a viatura
     patente: "Sgt",
-    nome: "Maria Souza",
-    matricula: ""                    // pode ser string vazia
+    nome: "Maria Souza"
   },
-  receivingOfficer: {                // recebeu a viatura
-    patente: "Sd",
-    nome: "João da Silva",
-    matricula: ""
+  garrisonCommander: {              // comandante da guarnição
+    patente: "Ten",
+    nome: "Carlos Lima"
   },
+  serviceType: "ordinario",         // "ordinario" | "intensificacao_tatica" | "adm" | "outros"
+  serviceTypeOther: "",             // preenchido quando serviceType = "outros"
   kilometers: {
-    initial: 45210,                  // inteiro ≥ 0
-    final: 45210                     // inteiro, final ≥ initial
+    initial: 45210,                 // preenchido na CARGA
+    final: null                     // preenchido na DEVOLUÇÃO (null na carga)
   },
-  checklist: {
+  departureChecklist: {             // checklist na carga
     oleo_motor:             "ok" | "alteracao",
     arrefecimento:          "ok" | "alteracao",
     pneus:                  "ok" | "alteracao",
     partida_motor:          "ok" | "alteracao",
     freios:                 "ok" | "alteracao",
     identificacao_visual:   "ok" | "alteracao",
-    limpeza:                "ok" | "alteracao"
+    limpeza:                "ok" | "alteracao",
+    iluminacao:             "ok" | "alteracao",
+    ad_blue:                "ok" | "alteracao",
+    giroflex_sirene:        "ok" | "alteracao"
   },
-  checklistObservations: {
-    oleo_motor: "Nível do óleo abaixo do mínimo"   // só para itens com alteração
+  departureChecklistObs: {          // observações dos itens com alteração
+    oleo_motor: "Nível do óleo abaixo do mínimo"
   },
-  observations: "Outras informações pertinentes...",  // texto livre (até 2000 chars)
-  photos: {
+  departureObservations: "Observações gerais...",
+  departurePhotos: {                // 5 fotos na carga
     frente:          "ObjectIdGridFS",
     fundo:           "ObjectIdGridFS",
     lateral_esquerda:"ObjectIdGridFS",
     lateral_direita: "ObjectIdGridFS",
     painel:          "ObjectIdGridFS"
   },
+
+  // --- FASE 2: DEVOLUÇÃO (ENTRADA) ---
+  returnOfficer: {                  // quem recebeu na devolução
+    patente: "Cb",
+    nome: "Pedro Santos"
+  },
+  returnPhotos: { ... } | null,     // 5 fotos na devolução (null até devolver)
+  returnObservations: "..." | null,
+  returnedAt: ISODate(...) | null,  // data da devolução
+
+  // --- METADADOS ---
   createdAt: ISODate(...),
   updatedAt: ISODate(...)
 }
 ```
 
-### Detalhes
+### Regras de negócio
 
-- **Placa:** normalizada antes da validação (`actions/handover-actions.ts:23`) — remove tudo que
-  não for alfanumérico e converte para maiúsculas.
-- **`checklistObservations`:** sempre presente (objeto), mesmo vazio — `actions/handover-actions.ts:88`.
-- **`photos`:** mapeia as 5 posições para o `ObjectId` do arquivo no GridFS.
-- **`deliveringOfficer`/`receivingOfficer`:** matrícula pode vir como string vazia (aceita pelo
-  schema — `lib/validation.ts:26`).
+1. **Um policial = uma viatura**: um policial não pode ter 2 registros abertos simultaneamente.
+2. **Uma viatura = um registro aberto**: se a viatura X já tem registro aberto, ninguém pode fazer nova carga nela.
+3. **Devolução só pelo dono**: apenas o policial que fez a carga pode registrar a devolução.
+4. **Km final ≥ Km inicial**: validação no `returnSchema`.
+5. **Fotos obrigatórias nas duas fases**: 5 fotos na carga, 5 fotos na devolução.
+6. **Admin pode fechar registros**: o admin pode fechar registros em aberto (sem dados de devolução).
+7. **Registro é imutável após fechamento** (sem edição).
+8. **Exclusão remove fotos do GridFS e depois o documento**.
+
+### Mudanças do modelo anterior
+
+- `officer` → `departureOfficer` (renomeado)
+- `deliveringOfficer` → mantido (sem matricula)
+- `receivingOfficer` → `returnOfficer` (renomeado, preenchido na devolução)
+- `checklist` → `departureChecklist` (renomeado)
+- `checklistObservations` → `departureChecklistObs` (renomeado)
+- `observations` → `departureObservations` (renomeado)
+- `photos` → `departurePhotos` (renomeado)
+- `status` → NOVO ("aberto" | "fechado")
+- `returnPhotos` → NOVO
+- `returnObservations` → NOVO
+- `returnedAt` → NOVO
+- `kilometers.final` → agora null até devolução
 
 ## 3. GridFS — bucket `photos`
 
@@ -87,49 +124,55 @@ Gerenciado pelo driver (`lib/gridfs.ts`). Gera as coleções:
 
 > O driver mongodb v7 não aceita `contentType` como opção top-level; por isso ele vai em `metadata`.
 
+### Nomes dos arquivos
+
+- Carga: `{PLACA}_{posicao}_departure.jpg` (ex.: `ABC1D23_frente_departure.jpg`)
+- Devolução: `{PLACA}_{posicao}_return.jpg` (ex.: `ABC1D23_frente_return.jpg`)
+
 ### Tamanho estimado por registro
 
-5 fotos × ~250KB ≈ 1,25MB (mais o documento do checklist). *Sem compressão no cliente ainda — ver
-[03-funcionalidades-futuras.md](./03-funcionalidades-futuras.md#21-compressãoredimensionamento-de-fotos-no-cliente).*
+- Carga: 5 fotos × ~250KB ≈ 1,25MB
+- Devolução: 5 fotos × ~250KB ≈ 1,25MB
+- Total por registro completo: ~2,5MB
 
 ## 4. Índices recomendados
 
-Ainda não criados no banco (roadmap — ver
-[03-funcionalidades-futuras.md](./03-funcionalidades-futuras.md#54-índices-no-mongodb)). Sugestão:
-
 ```js
-db.handovers.createIndex({ createdAt: -1 })      // listagem admin (mais recentes primeiro)
-db.handovers.createIndex({ plate: 1 })           // busca por placa
-db.handovers.createIndex({ 'officer.nome': 1 })  // busca por nome (futuro)
+db.handovers.createIndex({ createdAt: -1 })
+db.handovers.createIndex({ plate: 1 })
+db.handovers.createIndex({ 'departureOfficer.matricula': 1 })
+db.handovers.createIndex({ status: 1 })
+db.handovers.createIndex({ status: 1, 'departureOfficer.matricula': 1 })  // busca policial + aberto
+db.handovers.createIndex({ status: 1, plate: 1 })                         // busca viatura + aberto
 ```
 
-## 5. Coleção `users` (FASE FUTURA — autenticação)
-
-Planejada para a autenticação com roles (RF-11). Não existe no banco ainda.
+## 5. Coleção `users`
 
 ```js
 {
   _id: ObjectId,
-  cpf: "06468856507",          // ou matricula
-  name: "Nome",
+  matricula: "123456",          // única
+  nome: "João da Silva",
+  patente: "Sd",
   email: "email@exemplo.com",
   role: "admin" | "user",
-  credits: 0,
-  password: "<hash bcrypt>",   // bcryptjs
+  passwordHash: "<hash bcrypt>",   // bcryptjs, custo 12
   isActive: true,
+  primeiroAcesso: true,
+  resetRequested: false,
   createdAt: Date,
-  lastLogin: Date,
-  passwordResetRequested: false
+  updatedAt: Date,
+  lastLoginAt: Date,
+  passwordChangedAt: Date
 }
 ```
 
 ## 6. Regras de negócio na persistência
 
 1. Placa/prefixo obrigatório, normalizada em maiúsculas (sem caracteres especiais).
-2. Kilometragem final **≥** inicial (refine do Zod — `lib/validation.ts:43`).
-3. Todos os 7 itens do checklist devem ter status `ok` ou `alteracao` (enforced no loop de
-   `actions/handover-actions.ts:53`).
-4. As 5 fotos são obrigatórias; tamanho máximo por foto = `MAX_PHOTO_SIZE_MB` (padrão 2MB).
-5. "Com Alteração" **não exige** observação obrigatória no schema atual (pode ficar vazia).
-6. Registro é imutável após submissão na fase atual (sem edição).
-7. Exclusão remove primeiro as fotos do GridFS e depois o documento — `actions/handover-actions.ts:157`.
+2. Kilometragem final **≥** inicial (refine do Zod — `lib/validation.ts`).
+3. Todos os 10 itens do checklist devem ter status `ok` ou `alteracao`.
+4. As 5 fotos são obrigatórias em cada fase; tamanho máximo por foto = `MAX_PHOTO_SIZE_MB`.
+5. "Com Alteração" não exige observação obrigatória (pode ficar vazia).
+6. Registro fica "aberto" até devolução ou fechamento pelo admin.
+7. Exclusão remove primeiro as fotos do GridFS e depois o documento.
