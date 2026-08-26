@@ -2,10 +2,11 @@
 
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { LayoutDashboard } from 'lucide-react'
+import { LayoutDashboard, ClipboardList } from 'lucide-react'
 
 const navigation = [
-  { name: 'Formulário', href: '/', icon: LayoutDashboard },
+  { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+  { name: 'Nova Carga', href: '/carga', icon: ClipboardList },
 ]
 
 export function BottomNav() {
@@ -13,9 +14,9 @@ export function BottomNav() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 lg:hidden">
-      <div className="grid grid-cols-1 h-14">
+      <div className="grid grid-cols-2 h-14">
         {navigation.map((item) => {
-          const isActive = pathname === item.href
+          const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href)
 
           return (
             <button

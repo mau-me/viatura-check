@@ -4,18 +4,11 @@ import { useRouter, usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard,
-  Settings,
+  ClipboardList,
+  Shield,
   ChevronRight,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { AuthUser } from './AuthContext'
 
 interface SidebarProps {
@@ -24,13 +17,15 @@ interface SidebarProps {
   onClose: () => void
 }
 
-const navigation = [
-  { name: 'Formulário', href: '/', icon: LayoutDashboard },
-]
-
 export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
   const router = useRouter()
   const pathname = usePathname()
+
+  const navigation = [
+    { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+    { name: 'Nova Carga', href: '/carga', icon: ClipboardList },
+    ...(user.role === 'admin' ? [{ name: 'Administração', href: '/admin', icon: Shield }] : []),
+  ]
 
   return (
     <>
@@ -45,14 +40,14 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
 
       <aside
         className={cn(
-          'fixed top-16 left-0 z-50 h-[calc(100vh-4rem)] w-64 border-r bg-background transition-transform duration-200 lg:translate-x-0 lg:static lg:z-auto',
+          'fixed top-16 left-0 z-50 h-[calc(100vh-4rem)] w-64 border-r bg-background transition-transform duration-200 lg:translate-x-0',
           isOpen ? 'translate-x-0' : '-translate-x-full'
         )}
         aria-label="Navegação principal"
       >
         <nav className="flex h-full flex-col px-3 py-4 space-y-1">
           {navigation.map((item) => {
-            const isActive = pathname === item.href
+            const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href)
             return (
               <Button
                 key={item.name}
@@ -74,44 +69,6 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
           })}
 
           <div className="flex-1" />
-
-          <div className="pt-4 border-t">
-            <p className="px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Conta
-            </p>
-            <DropdownMenu>
-              <DropdownMenuTrigger render={
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start gap-3 px-3 py-2 text-sm"
-                  onClick={onClose}
-                />
-              }>
-                <Settings className="h-5 w-5 shrink-0" />
-                Configurações
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">{user.nome}</p>
-                    <p className="text-xs leading-none text-muted-foreground">
-                      {user.patente} • {user.matricula}
-                    </p>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={async () => {
-                    const res = await fetch('/api/auth/logout', { method: 'POST' })
-                    if (res.ok) window.location.href = '/login'
-                  }}
-                  className="text-destructive focus:text-destructive"
-                >
-                  Sair
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
         </nav>
       </aside>
     </>

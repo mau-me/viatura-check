@@ -3,6 +3,8 @@
 import { ReactNode, useState, useEffect } from 'react'
 import { AuthProvider, useAuth } from './AuthContext'
 import { Header } from './Header'
+import { Sidebar } from './Sidebar'
+import { BottomNav } from './BottomNav'
 
 interface AdminLayoutClientProps {
   user: {
@@ -22,6 +24,7 @@ interface AdminLayoutClientProps {
 }
 
 function AdminLayoutContent({ user, children }: AdminLayoutClientProps) {
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   const { isAuthenticated } = useAuth()
 
@@ -41,15 +44,23 @@ function AdminLayoutContent({ user, children }: AdminLayoutClientProps) {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background/60">
       <Header
         user={user}
-        isMobileSidebarOpen={false}
-        onToggleMobileSidebar={() => {}}
+        isMobileSidebarOpen={isMobileSidebarOpen}
+        onToggleMobileSidebar={setIsMobileSidebarOpen}
       />
-      <main className="pt-16 min-h-[calc(100vh-4rem)]">
-        <div className="p-4 lg:p-6">{children}</div>
-      </main>
+      <Sidebar
+        user={user}
+        isOpen={isMobileSidebarOpen}
+        onClose={() => setIsMobileSidebarOpen(false)}
+      />
+      <div className="lg:pl-64">
+        <main className="pt-16 min-h-[calc(100vh-4rem)] pb-20 lg:pb-0">
+          <div className="p-4 lg:p-6">{children}</div>
+        </main>
+      </div>
+      <BottomNav />
     </div>
   )
 }

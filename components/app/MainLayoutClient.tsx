@@ -5,7 +5,6 @@ import { AuthProvider, useAuth } from './AuthContext'
 import { Header } from './Header'
 import { Sidebar } from './Sidebar'
 import { BottomNav } from './BottomNav'
-import { cn } from '@/lib/utils'
 
 interface MainLayoutClientProps {
   user: {
@@ -45,19 +44,19 @@ function MainLayoutContent({ user, children }: MainLayoutClientProps) {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background/60">
       <Header
         user={user}
         isMobileSidebarOpen={isMobileSidebarOpen}
         onToggleMobileSidebar={setIsMobileSidebarOpen}
       />
-      <div className={cn('transition-all duration-200', 'lg:pl-64')}>
-        <Sidebar
-          user={user}
-          isOpen={isMobileSidebarOpen}
-          onClose={() => setIsMobileSidebarOpen(false)}
-        />
-        <main className="pt-16 lg:pt-0 min-h-[calc(100vh-4rem)] pb-20 lg:pb-0">
+      <Sidebar
+        user={user}
+        isOpen={isMobileSidebarOpen}
+        onClose={() => setIsMobileSidebarOpen(false)}
+      />
+      <div className="lg:pl-64">
+        <main className="pt-16 min-h-[calc(100vh-4rem)] pb-20 lg:pb-0">
           <div className="p-4 lg:p-6">{children}</div>
         </main>
       </div>
