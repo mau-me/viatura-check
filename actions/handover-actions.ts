@@ -10,6 +10,14 @@ import { findUserByMatricula } from '@/lib/auth'
 
 const MAX_PHOTO_SIZE = (parseInt(process.env.MAX_PHOTO_SIZE_MB || '2') || 2) * 1024 * 1024
 
+function normalizePlate(raw: string): string {
+  const cleaned = raw.replace(/[^A-Za-z0-9.]/g, '').toUpperCase()
+  if (/^\d{5}$/.test(cleaned)) {
+    return cleaned.slice(0, 1) + '.' + cleaned.slice(1)
+  }
+  return cleaned
+}
+
 const CHECKLIST_KEYS = [
   'oleo_motor',
   'arrefecimento',
@@ -38,7 +46,7 @@ export async function createDepartureAction(formData: FormData) {
       status: 'aberto',
       $or: [
         { 'departureOfficer.matricula': session.matricula },
-        { plate: (formData.get('plate') as string || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase() },
+        { plate: normalizePlate((formData.get('plate') as string) || '') },
       ],
     })
     if (existingOpen) {
@@ -48,9 +56,7 @@ export async function createDepartureAction(formData: FormData) {
       return { error: `A viatura ${existingOpen.plate} já possui um registro em aberto.` }
     }
 
-    const plate = (formData.get('plate') as string || '')
-      .replace(/[^A-Za-z0-9]/g, '')
-      .toUpperCase()
+    const plate = normalizePlate((formData.get('plate') as string) || '')
 
     const raw = {
       plate,
@@ -252,7 +258,7 @@ export async function getOpenHandoverByOfficer(matricula: string) {
       { sort: { createdAt: -1 } }
     )
     if (!doc) return { success: true, record: null }
-    return { success: true, record: { ...doc, _id: doc._id.toString() } }
+    return { success: true, record: { ...doc, _id: doc._id.toString(), plate: normalizePlate(doc.plate) } }
   } catch (error) {
     console.error('Erro ao buscar viatura em aberto:', error)
     return { error: 'Erro ao buscar viatura em aberto' }
@@ -294,7 +300,7 @@ export async function getHandoversAction(query = '', status: 'abertos' | 'fechad
       success: true,
       records: docs.map((d) => ({
         _id: d._id.toString(),
-        plate: d.plate,
+        plate: normalizePlate(d.plate),
         status: d.status,
         departureOfficer: d.departureOfficer,
         kilometers: d.kilometers,
@@ -315,7 +321,7 @@ export async function getHandoverByIdAction(id: string) {
     const { db } = await connectToDatabase()
     const doc = await db.collection('handovers').findOne({ _id: new ObjectId(id) })
     if (!doc) return { error: 'Registro não encontrado' }
-    return { success: true, record: { ...doc, _id: doc._id.toString() } }
+    return { success: true, record: { ...doc, _id: doc._id.toString(), plate: normalizePlate(doc.plate) } }
   } catch (error) {
     console.error('Erro ao buscar registro:', error)
     return { error: 'Erro ao buscar registro' }

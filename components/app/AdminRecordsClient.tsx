@@ -117,7 +117,7 @@ export function AdminRecordsClient() {
         <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input
           className="pl-9"
-          placeholder="Buscar por placa ou nome..."
+          placeholder="Buscar por prefixo ou nome..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleSearch()}

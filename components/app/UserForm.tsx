@@ -26,6 +26,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { useMediaQuery } from '@/hooks/use-media-query'
+import { PATENTE_OPTIONS } from '@/lib/validation'
 
 export interface UserFormData {
   _id?: string
@@ -117,19 +118,25 @@ export function UserForm({ open, onOpenChange, user, onSuccess }: UserFormProps)
           id="nome"
           value={form.nome}
           onChange={(e) => setForm({ ...form, nome: e.target.value })}
-          placeholder="Nome completo"
+          placeholder="Nome de Guerra"
           required
         />
       </div>
       <div className="space-y-2">
         <Label htmlFor="patente">Patente</Label>
-        <Input
-          id="patente"
+        <Select
           value={form.patente}
-          onChange={(e) => setForm({ ...form, patente: e.target.value })}
-          placeholder="Ex: Sd, Sgt, Maj"
-          required
-        />
+          onValueChange={(v) => { if (v) setForm({ ...form, patente: v }) }}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Selecione a patente" />
+          </SelectTrigger>
+          <SelectContent>
+            {PATENTE_OPTIONS.map((p) => (
+              <SelectItem key={p} value={p}>{p}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       <div className="space-y-2">
         <Label htmlFor="email">Email (opcional)</Label>

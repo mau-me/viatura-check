@@ -24,13 +24,13 @@ export function ChecklistItem({ slug, label, value = 'ok', onChange }: Props) {
 
   return (
     <div className="space-y-3 rounded-lg border p-3">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
         <Label className="text-sm font-medium leading-tight">{label}</Label>
         <RadioGroup
           name={`check_${slug}`}
           value={status}
           onValueChange={handleChange}
-          className="flex w-auto shrink-0 flex-row gap-3"
+          className="flex w-full flex-row flex-wrap gap-3 sm:w-auto sm:shrink-0"
         >
           <div className="flex items-center gap-1.5">
             <RadioGroupItem value="ok" className="data-checked:bg-primary" />

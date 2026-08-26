@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+export const PATENTE_OPTIONS = ['SD', 'CB', 'SGT', 'ST', 'ASP', 'TEN', 'CAP', 'MAJ', 'TEN CEL', 'CEL'] as const
+
 export const CHECKLIST_ITEMS = [
   { key: 'oleo_motor', label: 'Óleo do Motor' },
   { key: 'arrefecimento', label: 'Arrefecimento' },
@@ -25,13 +27,13 @@ export const PHOTO_KEYS = [
 const statusSchema = z.enum(['ok', 'alteracao'])
 
 const officerLoginSchema = z.object({
-  patente: z.string().trim().min(1, 'Patente obrigatória').max(30),
+  patente: z.enum(PATENTE_OPTIONS, 'Patente obrigatória'),
   nome: z.string().trim().min(1, 'Nome obrigatório').max(120),
   matricula: z.string().trim().min(1, 'Matrícula obrigatória').max(20),
 })
 
 const officerMinimalSchema = z.object({
-  patente: z.string().trim().min(1, 'Patente obrigatória').max(30),
+  patente: z.enum(PATENTE_OPTIONS, 'Patente obrigatória'),
   nome: z.string().trim().min(1, 'Nome obrigatório').max(120),
 })
 
@@ -77,7 +79,7 @@ export const setupPasswordSchema = z.object({
 export const createUserSchema = z.object({
   matricula: z.string().trim().min(1, 'Matrícula obrigatória').max(20).toUpperCase(),
   nome: z.string().trim().min(1, 'Nome obrigatório').max(120),
-  patente: z.string().trim().min(1, 'Patente obrigatória').max(30).toUpperCase(),
+  patente: z.enum(PATENTE_OPTIONS, 'Patente obrigatória'),
   email: z.string().email('Email inválido').optional().or(z.literal('')),
   role: z.enum(['admin', 'user']),
   isActive: z.boolean().default(true),
@@ -102,3 +104,14 @@ export type SetupPasswordInput = z.infer<typeof setupPasswordSchema>
 export type CreateUserInput = z.infer<typeof createUserSchema>
 export type UpdateUserInput = z.infer<typeof updateUserSchema>
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>
+
+const vehiclePrefixRegex = /^\d\.\d{4}$/
+
+export const vehicleSchema = z.object({
+  prefix: z.string().trim().regex(vehiclePrefixRegex, 'Prefixo no formato N.NNNN (ex.: 7.1301)'),
+  plate: z.string().trim().max(15).toUpperCase().optional().or(z.literal('')),
+  model: z.string().trim().max(100).optional().or(z.literal('')),
+  year: z.coerce.number().int().min(1900, 'Ano inválido').max(new Date().getFullYear() + 1, 'Ano inválido').optional(),
+})
+
+export type VehicleInput = z.infer<typeof vehicleSchema>

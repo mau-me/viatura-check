@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Loader2, Send } from 'lucide-react'
 import { toast } from 'sonner'
 import { createDepartureAction } from '@/actions/handover-actions'
+import { listVehiclesAction } from '@/actions/vehicle-actions'
 import { CHECKLIST_ITEMS, PHOTO_KEYS } from '@/lib/validation'
 import { useAuth } from '@/components/app/AuthContext'
 import { PhotoCapture } from '@/components/app/PhotoCapture'
@@ -19,10 +20,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 
 type PhotoState = Record<string, { file: File | null; preview: string | null }>
 
+interface Vehicle {
+  _id: string
+  prefix: string
+  plate: string
+  model: string
+  year: number
+}
+
 export function DepartureForm() {
   const { user } = useAuth()
   const [pending, startTransition] = useTransition()
   const [serviceType, setServiceType] = useState('ordinario')
+  const [vehicles, setVehicles] = useState<Vehicle[]>([])
+  const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null)
   const [photos, setPhotos] = useState<PhotoState>(
     Object.fromEntries(PHOTO_KEYS.map((p) => [p.key, { file: null, preview: null }]))
   )
@@ -30,6 +41,12 @@ export function DepartureForm() {
 
   const photosRef = useRef(photos)
   photosRef.current = photos
+
+  useEffect(() => {
+    listVehiclesAction().then((res) => {
+      if ('vehicles' in res) setVehicles(res.vehicles as Vehicle[])
+    })
+  }, [])
 
   const setPhoto = (key: string, file: File | null) => {
     setPhotos((prev) => {
@@ -49,7 +66,12 @@ export function DepartureForm() {
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    if (!selectedVehicle) {
+      toast.error('Selecione uma viatura')
+      return
+    }
     const formData = new FormData(e.currentTarget)
+    formData.set('plate', selectedVehicle.plate || selectedVehicle.prefix)
     for (const { key } of PHOTO_KEYS) {
       const f = photos[key].file
       if (f) formData.set(`photo_${key}`, f)
@@ -89,12 +111,29 @@ export function DepartureForm() {
         <Card>
           <CardHeader>
             <CardTitle>Viatura</CardTitle>
-            <CardDescription>Placa ou prefixo e kilometragem inicial</CardDescription>
+            <CardDescription>Selecione a viatura e informe a kilometragem inicial</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="plate">Placa ou Prefixo *</Label>
-              <Input id="plate" name="plate" placeholder="ABC1D23" required />
+              <Label>Viatura *</Label>
+              <Select
+                value={selectedVehicle?.prefix || ''}
+                onValueChange={(prefix) => {
+                  const v = vehicles.find((veh) => veh.prefix === prefix)
+                  setSelectedVehicle(v || null)
+                }}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Selecione a viatura" />
+                </SelectTrigger>
+                <SelectContent>
+                  {vehicles.map((v) => (
+                    <SelectItem key={v._id} value={v.prefix}>
+                      {v.prefix}{v.plate ? ` — ${v.plate}` : ''}{v.model ? ` (${v.model})` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="km_initial">Km Inicial *</Label>
@@ -120,7 +159,7 @@ export function DepartureForm() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label>Tipo *</Label>
-              <Select name="service_type" defaultValue="ordinario" items={{ ordinario: 'Ordinário', intensificacao_tatica: 'Intensificação Tática', adm: 'ADM', outros: 'Outros' }} onValueChange={(v) => { if (v) setServiceType(v) }}>
+              <Select name="service_type" defaultValue="ordinario" onValueChange={(v) => { if (v) setServiceType(v) }}>
                 <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
@@ -143,8 +182,8 @@ export function DepartureForm() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Policial que Entregou</CardTitle>
-            <CardDescription>Quem lhe entregou a viatura</CardDescription>
+            <CardTitle>Policial Despachante da Viatura</CardTitle>
+            <CardDescription>Responsável pela despacho da viatura</CardDescription>
           </CardHeader>
           <CardContent>
             <OfficerFields prefix="delivered" title="" />
@@ -195,7 +234,7 @@ export function DepartureForm() {
           </CardContent>
         </Card>
 
-        <Button type="submit" size="lg" className="sticky bottom-4 w-full" disabled={pending}>
+        <Button type="submit" size="lg" className="sticky bottom-4 w-full" disabled={pending || !selectedVehicle}>
           {pending ? (
             <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Salvando...</>
           ) : (

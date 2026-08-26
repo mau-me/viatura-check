@@ -10,7 +10,34 @@
 - Nome do banco: `viatura` (definido em `lib/mongodb.ts:31`).
 - Conexão: `MONGODB_URI` via variável de ambiente (`lib/mongodb.ts:3`).
 
-## 2. Coleção `handovers` — registros de carga/devolução
+## 2. Coleção `vehicles` — viaturas cadastradas
+
+```js
+{
+  _id: ObjectId,
+  prefix: "7.1301",          // formato N.NNNN, normalizado, único
+  plate: "ABC1D23",          // normalizado: maiúsculas, sem caracteres especiais
+  model: "Toyota Hilux",
+  year: 2024,
+  createdAt: Date,
+  updatedAt: Date
+}
+```
+
+### Regras de negócio
+
+1. Prefixo único — não pode haver duas viaturas com o mesmo prefixo.
+2. Prefixo no formato `N.NNNN` (ex.: `7.1301`), validado por regex `^\d\.\d{4}$`.
+3. Placa normalizada em maiúsculas, sem caracteres especiais.
+
+### Índices recomendados
+
+```js
+db.vehicles.createIndex({ prefix: 1 }, { unique: true })
+db.vehicles.createIndex({ plate: 1 })
+```
+
+## 3. Coleção `handovers` — registros de carga/devolução
 
 Estrutura do documento com fluxo de duas fases (carga + devolução):
 
@@ -109,7 +136,7 @@ Estrutura do documento com fluxo de duas fases (carga + devolução):
 - `returnedAt` → NOVO
 - `kilometers.final` → agora null até devolução
 
-## 3. GridFS — bucket `photos`
+## 4. GridFS — bucket `photos`
 
 Gerenciado pelo driver (`lib/gridfs.ts`). Gera as coleções:
 
@@ -135,7 +162,7 @@ Gerenciado pelo driver (`lib/gridfs.ts`). Gera as coleções:
 - Devolução: 5 fotos × ~250KB ≈ 1,25MB
 - Total por registro completo: ~2,5MB
 
-## 4. Índices recomendados
+## 5. Índices recomendados
 
 ```js
 db.handovers.createIndex({ createdAt: -1 })
@@ -144,9 +171,11 @@ db.handovers.createIndex({ 'departureOfficer.matricula': 1 })
 db.handovers.createIndex({ status: 1 })
 db.handovers.createIndex({ status: 1, 'departureOfficer.matricula': 1 })  // busca policial + aberto
 db.handovers.createIndex({ status: 1, plate: 1 })                         // busca viatura + aberto
+db.vehicles.createIndex({ prefix: 1 }, { unique: true })
+db.vehicles.createIndex({ plate: 1 })
 ```
 
-## 5. Coleção `users`
+## 6. Coleção `users`
 
 ```js
 {
@@ -167,7 +196,7 @@ db.handovers.createIndex({ status: 1, plate: 1 })                         // bus
 }
 ```
 
-## 6. Regras de negócio na persistência
+## 7. Regras de negócio na persistência
 
 1. Placa/prefixo obrigatório, normalizada em maiúsculas (sem caracteres especiais).
 2. Kilometragem final **≥** inicial (refine do Zod — `lib/validation.ts`).

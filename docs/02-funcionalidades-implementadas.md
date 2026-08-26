@@ -18,8 +18,9 @@
 9. [Administração (`/admin`)](#9-administração-admin)
 10. [Detalhe do registro (`/admin/[id]`)](#10-detalhe-do-registro-adminid)
 11. [Gerenciamento de usuários](#11-gerenciamento-de-usuários)
-12. [Servir fotos via API (`/api/photos/[id]`)](#12-servir-fotos-via-api-apiphotosid)
-13. [PWA e tema](#13-pwa-e-tema)
+12. [Gerenciamento de viaturas](#12-gerenciamento-de-viaturas)
+13. [Servir fotos via API (`/api/photos/[id]`)](#13-servir-fotos-via-api-apiphotosid)
+14. [PWA e tema](#14-pwa-e-tema)
 
 ---
 
@@ -51,15 +52,19 @@
 **Acesso:** autenticado
 
 **O que faz:** formulário de saída da viatura. Divide-se em cards:
-- **Viatura** (placa + km inicial — sem km final)
-- **Policial que Entregou** (patente + nome — sem matrícula)
-- **Verificação** (checklist 7 itens)
+- **Viatura** (select de viaturas pré-cadastradas + km inicial — sem km final)
+- **Comandante da Guarnição** (patente [select] + nome de guerra)
+- **Tipo de Serviço** (ordinário / intensificação tática / ADM / outros)
+- **Policial que Entregou** (patente [select] + nome de guerra — sem matrícula)
+- **Verificação** (checklist 11 itens)
 - **Fotos** (5 obrigatórias)
 - **Observações** (opcional)
 
 **Arquivos:**
 - `app/carga/page.tsx` — server wrapper com autenticação
 - `components/app/DepartureForm.tsx` — client component do formulário
+- `components/app/OfficerFields.tsx` — campos de patente (select) + nome de guerra
+- `actions/vehicle-actions.ts` — busca de viaturas para o select
 
 **Detalhes:**
 - O policial logado é registrado automaticamente como `departureOfficer` (matrícula do login)
@@ -78,7 +83,7 @@
 **O que faz:** formulário de retorno da viatura. Divide-se em:
 - Dados da carga (placa + km inicial — read-only)
 - **Km Final** (obrigatório, ≥ km inicial)
-- **Policial que Recebeu** (patente + nome)
+- **Policial que Recebeu** (patente [select] + nome de guerra)
 - **Fotos** (5 obrigatórias — mesmas posições)
 - **Observações** (opcional)
 
@@ -116,12 +121,12 @@ Há pré-visualização antes do envio e botão para remover a foto.
 **Status:** ✅ Implementado
 **Requisitos:** RF-05, RF-06
 
-**O que faz:** apresenta os 7 itens do checklist com seleção **OK** ou **Com Alteração** (radio
+**O que faz:** apresenta os 11 itens do checklist com seleção **OK** ou **Com Alteração** (radio
 group). Quando "Com Alteração" é selecionado, exibe uma caixa de texto para descrever a alteração.
 
 **Arquivos:**
 - `components/app/ChecklistItem.tsx` — item do checklist (radio + textarea condicional)
-- `lib/validation.ts` — constante `CHECKLIST_ITEMS` (7 itens e labels)
+- `lib/validation.ts` — constante `CHECKLIST_ITEMS` (11 itens e labels)
 
 **Itens do checklist:**
 1. Óleo do Motor (`oleo_motor`)
@@ -131,6 +136,10 @@ group). Quando "Com Alteração" é selecionado, exibe uma caixa de texto para d
 5. Freios (`freios`)
 6. Identificação Visual (`identificacao_visual`)
 7. Limpeza (`limpeza`)
+8. Iluminação (Farol, Lanterna e Piscas) (`iluminacao`)
+9. Retrovisores (Condição, Regulagem e Espelhos) (`retrovisores`)
+10. AD Blue (ARLA) (`ad_blue`)
+11. Giroflex e Sirene (`giroflex_sirene`)
 
 ---
 
@@ -214,9 +223,10 @@ group). Quando "Com Alteração" é selecionado, exibe uma caixa de texto para d
 **Requisitos:** RF-10, RNF-01, RNF-07
 **Acesso:** admin apenas
 
-**O que faz:** duas tabs:
+**O que faz:** três tabs:
 - **Registros:** lista com filtro (Todos / Em Aberto / Fechados), busca, exclusão, fechamento
 - **Usuários:** CRUD de usuários
+- **Viaturas:** CRUD de viaturas (prefixo, placa, modelo, ano)
 
 **Arquivos:**
 - `app/admin/page.tsx` — server page com tabs
@@ -224,6 +234,7 @@ group). Quando "Com Alteração" é selecionado, exibe uma caixa de texto para d
 - `components/app/AdminLayoutClient.tsx` — admin shell
 - `components/app/AdminRecordsClient.tsx` — listagem de registros
 - `components/app/UserManagementClient.tsx` — gerenciamento de usuários
+- `components/app/VehicleManagementClient.tsx` — gerenciamento de viaturas
 
 ---
 
@@ -265,7 +276,30 @@ group). Quando "Com Alteração" é selecionado, exibe uma caixa de texto para d
 
 ---
 
-## 12. Servir fotos via API (`/api/photos/[id]`)
+## 12. Gerenciamento de viaturas
+
+**Status:** ✅ Implementado
+**Requisitos:** —
+**Acesso:** admin apenas
+
+**O que faz:** CRUD completo de viaturas com:
+- Tabela (desktop) e cards (mobile) — responsivo
+- Formulário em Dialog (desktop) / Drawer (mobile)
+- Busca por prefixo, placa ou modelo
+- Exclusão com confirmação (AlertDialog)
+- Prefixo no formato N.NNNN (ex.: 7.1301)
+
+**Arquivos:**
+- `components/app/VehicleManagementClient.tsx` — orchestrador
+- `components/app/VehicleForm.tsx` — formulário (Dialog/Drawer)
+- `components/app/VehicleTable.tsx` — tabela desktop
+- `components/app/VehicleCard.tsx` — card mobile
+- `actions/vehicle-actions.ts` — Server Actions (CRUD)
+- `lib/validation.ts` — schema `vehicleSchema`
+
+---
+
+## 13. Servir fotos via API (`/api/photos/[id]`)
 
 **Status:** ✅ Implementado
 **Requisitos:** RNF-04
@@ -279,7 +313,7 @@ group). Quando "Com Alteração" é selecionado, exibe uma caixa de texto para d
 
 ---
 
-## 13. PWA e tema
+## 14. PWA e tema
 
 **Status:** ✅ Implementado
 **Requisitos:** RNF-02, RNF-07
