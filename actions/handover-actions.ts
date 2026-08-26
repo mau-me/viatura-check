@@ -59,15 +59,15 @@ export async function createDepartureAction(formData: FormData) {
         matricula: user.matricula,
       },
       deliveringOfficer: {
-        patente: formData.get('delivered_patente'),
-        nome: formData.get('delivered_nome'),
+        patente: (formData.get('delivered_patente') as string) || '',
+        nome: (formData.get('delivered_nome') as string) || '',
       },
       garrisonCommander: {
-        patente: formData.get('garrison_patente'),
-        nome: formData.get('garrison_nome'),
+        patente: (formData.get('garrison_patente') as string) || '',
+        nome: (formData.get('garrison_nome') as string) || '',
       },
-      serviceType: formData.get('service_type'),
-      serviceTypeOther: formData.get('service_type_other'),
+      serviceType: (formData.get('service_type') as string) || 'ordinario',
+      serviceTypeOther: (formData.get('service_type_other') as string) || '',
       km_initial: formData.get('km_initial'),
       departureChecklist: {} as Record<string, 'ok' | 'alteracao'>,
       departureChecklistObs: {} as Record<string, string>,
@@ -158,8 +158,8 @@ export async function completeReturnAction(id: string, formData: FormData) {
     const rawReturn = {
       km_final: kmFinal,
       returnOfficer: {
-        patente: formData.get('return_patente'),
-        nome: formData.get('return_nome'),
+        patente: (formData.get('return_patente') as string) || '',
+        nome: (formData.get('return_nome') as string) || '',
       },
       returnObservations: formData.get('return_observations'),
     }
