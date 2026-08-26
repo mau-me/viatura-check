@@ -1,24 +1,9 @@
 'use client'
 
-import { Menu, User, Shield, Sun, Moon, LogOut, LayoutDashboard } from 'lucide-react'
+import { Menu, Sun, Moon, LogOut } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from '@/components/ui/avatar'
-import { Badge } from '@/components/ui/badge'
-import { useRouter } from 'next/navigation'
 import { useAuth } from './AuthContext'
 
 interface HeaderProps {
@@ -46,20 +31,12 @@ export function Header({
 }: HeaderProps) {
   const { logout } = useAuth()
   const { theme, setTheme } = useTheme()
-  const router = useRouter()
 
   const handleLogout = async () => {
     await logout()
   }
 
-  const getInitials = (nome: string) => {
-    return nome
-      .split(' ')
-      .map((n) => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2)
-  }
+  const firstName = user.nome.split(' ')[0]
 
   return (
     <header className={cn(
@@ -78,15 +55,19 @@ export function Header({
             <Menu className="h-5 w-5" />
           </Button>
 
-          <div className="hidden lg:flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-              <Shield className="h-5 w-5 text-primary-foreground" />
-            </div>
-            <span className="font-bold text-lg">Viatura</span>
-          </div>
+          <a href="/" className="hidden lg:flex items-center gap-2">
+            <img
+              src="/brasao_cipe_polo_sem_fundo.png"
+              alt="Viatura"
+              className="h-10 w-10 object-contain"
+            />
+            <span className="font-bold text-xl">Viatura</span>
+          </a>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1">
+          <span className="text-sm font-medium mr-2">Olá, {firstName}</span>
+
           <Button
             variant="ghost"
             size="icon"
@@ -97,55 +78,14 @@ export function Header({
             <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
           </Button>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger render={
-              <Button variant="ghost" className="relative h-9 w-9 rounded-full" />
-            }>
-              <Avatar>
-                <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(user.nome)}`} alt={user.nome} />
-                <AvatarFallback>{getInitials(user.nome)}</AvatarFallback>
-              </Avatar>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56" align="end">
-              <DropdownMenuLabel className="font-normal">
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">{user.nome}</p>
-                  <p className="text-xs leading-none text-muted-foreground">
-                    {user.patente} • {user.matricula}
-                  </p>
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => {
-                  router.push(user.role === 'admin' ? '/admin' : '/')
-                }}
-              >
-                <LayoutDashboard className="mr-2 h-4 w-4" />
-                {user.role === 'admin' ? 'Administração' : 'Formulário'}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={handleLogout}
-                className="text-destructive focus:text-destructive"
-              >
-                <LogOut className="mr-2 h-4 w-4" />
-                Sair
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          <Badge variant={user.role === 'admin' ? 'default' : 'secondary'} className="hidden sm:inline-flex">
-            {user.role === 'admin' ? (
-              <>
-                <Shield className="mr-1 h-3 w-3" /> Admin
-              </>
-            ) : (
-              <>
-                <User className="mr-1 h-3 w-3" /> Usuário
-              </>
-            )}
-          </Badge>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleLogout}
+            aria-label="Sair do sistema"
+          >
+            <LogOut className="h-5 w-5" />
+          </Button>
         </div>
       </div>
     </header>

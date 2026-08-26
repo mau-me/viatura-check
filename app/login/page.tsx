@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useFormState, useFormStatus } from 'react-dom'
-import { Loader2, Lock, User, Shield } from 'lucide-react'
+import { Loader2, Lock, User } from 'lucide-react'
 import { toast } from 'sonner'
 import { loginAction, setupPasswordAction, requestPasswordResetAction } from '@/actions/auth-actions'
 import { Button } from '@/components/ui/button'
@@ -115,9 +115,11 @@ export default function LoginPage() {
   return (
     <div className="mx-auto max-w-md space-y-4 p-4">
       <header className="text-center space-y-2">
-        <div className="mx-auto size-12 rounded-xl bg-primary/10 flex items-center justify-center">
-          <Shield className="size-6 text-primary" />
-        </div>
+        <img
+          src="/brasao_cipe_polo_sem_fundo.png"
+          alt="Brasão"
+          className="mx-auto size-24 object-contain"
+        />
         <h1 className="text-2xl font-bold">Controle de Viatura</h1>
         <p className="text-muted-foreground">
           {showPasswordInput
@@ -319,7 +321,7 @@ export default function LoginPage() {
       </Card>
 
       <p className="text-center text-xs text-muted-foreground">
-        Controle de Carga de Viatura &copy; {new Date().getFullYear()}
+        CIPE POLO - Base Dragão &copy; {new Date().getFullYear()}
       </p>
     </div>
   )

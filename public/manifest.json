@@ -4,10 +4,7 @@
   "description": "Checklist de carga de viatura",
   "lang": "pt-BR",
   "icons": [
-    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
-    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "/brasao_cipe_polo_sem_fundo.png", "sizes": "any", "type": "image/png", "purpose": "any" }
   ],
   "start_url": "/",
   "display": "standalone",

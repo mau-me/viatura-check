@@ -27,8 +27,8 @@ export const metadata: Metadata = {
     title: "Viatura",
   },
   icons: {
-    icon: [{ url: "/icon-192.png", sizes: "192x192", type: "image/png" }],
-    apple: [{ url: "/icon-192.png", sizes: "192x192", type: "image/png" }],
+    icon: [{ url: "/brasao_cipe_polo_sem_fundo.png", sizes: "any", type: "image/png" }],
+    apple: [{ url: "/brasao_cipe_polo_sem_fundo.png", sizes: "any", type: "image/png" }],
   },
 };
 
@@ -48,11 +48,21 @@ export default function RootLayout({
     <html lang="pt-BR" suppressHydrationWarning>
       <body
         className={cn(
-          "min-h-dvh bg-background font-sans antialiased",
+          "min-h-dvh font-sans antialiased",
           geistSans.variable,
           geistMono.variable
         )}
       >
+        <div
+          data-bg
+          className="fixed inset-0 -z-10"
+          style={{
+            backgroundImage: "url(/marpat.jpg)",
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            backgroundAttachment: "fixed",
+          }}
+        />
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
