@@ -9,6 +9,7 @@ export const CHECKLIST_ITEMS = [
   { key: 'identificacao_visual', label: 'Identificação Visual' },
   { key: 'limpeza', label: 'Limpeza' },
   { key: 'iluminacao', label: 'Iluminação (Farol, Lanterna e Piscas)' },
+  { key: 'retrovisores', label: 'Retrovisores (Condição, Regulagem e Espelhos)' },
   { key: 'ad_blue', label: 'AD Blue (ARLA)' },
   { key: 'giroflex_sirene', label: 'Giroflex e Sirene' },
 ] as const

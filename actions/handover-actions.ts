@@ -19,6 +19,7 @@ const CHECKLIST_KEYS = [
   'identificacao_visual',
   'limpeza',
   'iluminacao',
+  'retrovisores',
   'ad_blue',
   'giroflex_sirene',
 ] as const
