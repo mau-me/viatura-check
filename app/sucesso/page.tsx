@@ -6,33 +6,41 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 export default function SucessoPage({
   searchParams,
 }: {
-  searchParams: { id?: string };
+  searchParams: { id?: string; phase?: string };
 }) {
+  const isReturn = searchParams.phase === "return";
+
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-4 p-4 text-center">
       <CheckCircle2 className="h-16 w-16 text-green-600" />
       <Card className="w-full">
         <CardHeader>
-          <CardTitle className="text-xl">Registro salvo!</CardTitle>
+          <CardTitle className="text-xl">
+            {isReturn ? "Devolução registrada!" : "Carga registrada!"}
+          </CardTitle>
           <CardDescription>
-            A carga de viatura foi registrada com sucesso.
+            {isReturn
+              ? "A devolução da viatura foi registrada com sucesso."
+              : "A carga da viatura foi registrada com sucesso."}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-muted-foreground">
           {searchParams.id && (
             <p>
-              Identificador do registro:{" "}
+              Identificador:{" "}
               <span className="font-mono font-medium text-foreground">{searchParams.id}</span>
+            </p>
+          )}
+          {!isReturn && (
+            <p className="text-primary font-medium">
+              Não esqueça de registrar a devolução quando retornar a viatura.
             </p>
           )}
         </CardContent>
       </Card>
       <div className="flex w-full flex-col gap-2">
         <Button render={<Link href="/" />} size="lg">
-          Nova Carga
-        </Button>
-        <Button render={<Link href="/admin" />} variant="outline">
-          Ver registros (admin)
+          {isReturn ? "Voltar ao Dashboard" : "Ver Viatura em Aberto"}
         </Button>
       </div>
     </div>
