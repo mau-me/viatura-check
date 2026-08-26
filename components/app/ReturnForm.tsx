@@ -90,12 +90,16 @@ export function ReturnForm({ id }: { id: string }) {
     }
 
     startTransition(async () => {
-      const res = await completeReturnAction(id, formData)
-      if (res.error) {
-        toast.error(res.error)
-      } else {
-        toast.success('Devolução registrada com sucesso!')
-        router.push(`/sucesso?id=${id}&phase=return`)
+      try {
+        const res = await completeReturnAction(id, formData)
+        if (res.error) {
+          toast.error(res.error)
+        } else {
+          toast.success('Devolução registrada com sucesso!')
+          router.push(`/sucesso?id=${id}&phase=return`)
+        }
+      } catch {
+        toast.error('Erro inesperado. Tente novamente.')
       }
     })
   }

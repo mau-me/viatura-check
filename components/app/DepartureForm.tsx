@@ -54,14 +54,21 @@ export function DepartureForm() {
       const f = photos[key].file
       if (f) formData.set(`photo_${key}`, f)
     }
+    if (!formData.get('service_type')) {
+      formData.set('service_type', 'ordinario')
+    }
 
     startTransition(async () => {
-      const res = await createDepartureAction(formData)
-      if (res.error) {
-        toast.error(res.error)
-      } else {
-        toast.success('Carga registrada com sucesso!')
-        router.push(`/sucesso?id=${res.id}&phase=departure`)
+      try {
+        const res = await createDepartureAction(formData)
+        if (res.error) {
+          toast.error(res.error)
+        } else {
+          toast.success('Carga registrada com sucesso!')
+          router.push(`/sucesso?id=${res.id}&phase=departure`)
+        }
+      } catch {
+        toast.error('Erro inesperado. Tente novamente.')
       }
     })
   }
