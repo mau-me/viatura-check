@@ -10,6 +10,12 @@ import { findUserByMatricula } from '@/lib/auth'
 
 const MAX_PHOTO_SIZE = (parseInt(process.env.MAX_PHOTO_SIZE_MB || '2') || 2) * 1024 * 1024
 
+function checkBufferAvailable(): void {
+  if (typeof Buffer === 'undefined') {
+    throw new Error('Buffer não está disponível no runtime atual')
+  }
+}
+
 function normalizePlate(raw: string): string {
   const cleaned = raw.replace(/[^A-Za-z0-9.]/g, '').toUpperCase()
   if (/^\d{5}$/.test(cleaned)) {
@@ -109,9 +115,15 @@ export async function createDepartureAction(formData: FormData) {
         return { error: `Foto "${key}" excede o tamanho máximo de ${MAX_PHOTO_SIZE / 1024 / 1024}MB` }
       }
 
-      const buffer = Buffer.from(await file.arrayBuffer())
-      const id = await uploadPhoto(buffer, `${plate}_${key}_departure.jpg`, file.type || 'image/jpeg')
-      photoIds[key] = id
+      try {
+        checkBufferAvailable()
+        const buffer = Buffer.from(await file.arrayBuffer())
+        const id = await uploadPhoto(buffer, `${plate}_${key}_departure.jpg`, file.type || 'image/jpeg')
+        photoIds[key] = id
+      } catch (uploadError) {
+        console.error(`Erro no upload da foto "${key}":`, uploadError)
+        return { error: `Falha no upload da foto "${key}": ${(uploadError as Error).message}` }
+      }
     }
 
     const now = new Date()
@@ -188,9 +200,15 @@ export async function completeReturnAction(id: string, formData: FormData) {
         return { error: `Foto "${key}" excede o tamanho máximo de ${MAX_PHOTO_SIZE / 1024 / 1024}MB` }
       }
 
-      const buffer = Buffer.from(await file.arrayBuffer())
-      const id = await uploadPhoto(buffer, `${doc.plate}_${key}_return.jpg`, file.type || 'image/jpeg')
-      photoIds[key] = id
+      try {
+        checkBufferAvailable()
+        const buffer = Buffer.from(await file.arrayBuffer())
+        const id = await uploadPhoto(buffer, `${doc.plate}_${key}_return.jpg`, file.type || 'image/jpeg')
+        photoIds[key] = id
+      } catch (uploadError) {
+        console.error(`Erro no upload da foto "${key}":`, uploadError)
+        return { error: `Falha no upload da foto "${key}": ${(uploadError as Error).message}` }
+      }
     }
 
     const now = new Date()

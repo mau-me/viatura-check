@@ -89,8 +89,9 @@ export function DepartureForm() {
           toast.success('Carga registrada com sucesso!')
           router.push(`/sucesso?id=${res.id}&phase=departure`)
         }
-      } catch {
-        toast.error('Erro inesperado. Tente novamente.')
+      } catch (error) {
+        console.error('Erro ao criar carga:', error)
+        toast.error(`Erro inesperado: ${(error as Error).message}. Tente novamente.`)
       }
     })
   }

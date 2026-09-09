@@ -98,8 +98,9 @@ export function ReturnForm({ id }: { id: string }) {
           toast.success('Devolução registrada com sucesso!')
           router.push(`/sucesso?id=${id}&phase=return`)
         }
-      } catch {
-        toast.error('Erro inesperado. Tente novamente.')
+      } catch (error) {
+        console.error('Erro ao registrar devolução:', error)
+        toast.error(`Erro inesperado: ${(error as Error).message}. Tente novamente.`)
       }
     })
   }
