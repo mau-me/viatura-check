@@ -105,17 +105,22 @@ export function HandoverDetailClient({ id }: { id: string }) {
         <CardContent className="space-y-2">
           {CHECKLIST_ITEMS.map((item) => {
             const status = record.departureChecklist?.[item.key]
+            const isBoolean = item.type === 'boolean'
             return (
               <div key={item.key} className="flex items-center justify-between rounded-lg border p-3">
                 <div>
                   <p className="font-medium">{item.label}</p>
-                  {status === 'alteracao' && record.departureChecklistObs?.[item.key] && (
+                  {isBoolean && status === 'alteracao' && record.departureChecklistObs?.[item.key] && (
                     <p className="text-sm text-destructive">{record.departureChecklistObs[item.key]}</p>
                   )}
                 </div>
-                <Badge variant={status === 'ok' ? 'default' : 'destructive'}>
-                  {status === 'ok' ? 'OK' : 'Com Alteração'}
-                </Badge>
+                {isBoolean ? (
+                  <Badge variant={status === 'ok' ? 'default' : 'destructive'}>
+                    {status === 'ok' ? 'OK' : 'Com Alteração'}
+                  </Badge>
+                ) : (
+                  <Badge variant="outline">{status}</Badge>
+                )}
               </div>
             )
           })}

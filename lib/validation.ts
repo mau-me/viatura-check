@@ -3,17 +3,18 @@ import { z } from 'zod'
 export const PATENTE_OPTIONS = ['SD', 'CB', 'SGT', 'ST', 'ASP', 'TEN', 'CAP', 'MAJ', 'TEN CEL', 'CEL'] as const
 
 export const CHECKLIST_ITEMS = [
-  { key: 'oleo_motor', label: 'Óleo do Motor' },
-  { key: 'arrefecimento', label: 'Arrefecimento' },
-  { key: 'pneus', label: 'Condições dos Pneus' },
-  { key: 'partida_motor', label: 'Partida e Funcionamento do Motor' },
-  { key: 'freios', label: 'Freios' },
-  { key: 'identificacao_visual', label: 'Identificação Visual' },
-  { key: 'limpeza', label: 'Limpeza' },
-  { key: 'iluminacao', label: 'Iluminação (Farol, Lanterna e Piscas)' },
-  { key: 'retrovisores', label: 'Retrovisores (Condição, Regulagem e Espelhos)' },
-  { key: 'ad_blue', label: 'AD Blue (ARLA)' },
-  { key: 'giroflex_sirene', label: 'Giroflex e Sirene' },
+  { key: 'oleo_motor', label: 'Óleo do Motor', type: 'boolean' as const },
+  { key: 'arrefecimento', label: 'Arrefecimento', type: 'boolean' as const },
+  { key: 'pneus', label: 'Condições dos Pneus', type: 'boolean' as const },
+  { key: 'partida_motor', label: 'Partida e Funcionamento do Motor', type: 'boolean' as const },
+  { key: 'freios', label: 'Freios', type: 'boolean' as const },
+  { key: 'identificacao_visual', label: 'Identificação Visual (Plotagem)', type: 'boolean' as const },
+  { key: 'limpeza', label: 'Limpeza', type: 'boolean' as const },
+  { key: 'iluminacao', label: 'Iluminação (Farol, Lanterna e Piscas)', type: 'boolean' as const },
+  { key: 'retrovisores', label: 'Retrovisores (Condição, Regulagem e Espelhos)', type: 'boolean' as const },
+  { key: 'giroflex_sirene', label: 'Giroflex e Sirene', type: 'boolean' as const },
+  { key: 'combustivel', label: 'Combustível', type: 'level' as const },
+  { key: 'ad_blue', label: 'AD Blue (ARLA)', type: 'level' as const },
 ] as const
 
 export const PHOTO_KEYS = [
@@ -21,10 +22,10 @@ export const PHOTO_KEYS = [
   { key: 'fundo', label: 'Fundo' },
   { key: 'lateral_esquerda', label: 'Lateral Esquerda' },
   { key: 'lateral_direita', label: 'Lateral Direita' },
-  { key: 'painel', label: 'Painel do Veículo' },
+  { key: 'painel', label: 'Painel do Veículo (Aceso e com Hodômetro Visível)' },
 ] as const
 
-const statusSchema = z.enum(['ok', 'alteracao'])
+const statusSchema = z.enum(['ok', 'alteracao', 'vazio', '1/4', '2/4', '3/4', 'cheio'])
 
 const officerLoginSchema = z.object({
   patente: z.enum(PATENTE_OPTIONS, 'Patente obrigatória'),

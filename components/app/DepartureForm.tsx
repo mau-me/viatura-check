@@ -197,7 +197,7 @@ export function DepartureForm() {
           </CardHeader>
           <CardContent className="space-y-4">
             {CHECKLIST_ITEMS.map((item) => (
-              <ChecklistItem key={item.key} slug={item.key} label={item.label} />
+              <ChecklistItem key={item.key} slug={item.key} label={item.label} type={item.type} />
             ))}
           </CardContent>
         </Card>

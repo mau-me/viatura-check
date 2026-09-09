@@ -122,9 +122,9 @@ export async function listVehiclesAction(query = '') {
       .collection('handovers')
       .find({ status: 'aberto' }, { projection: { plate: 1 } })
       .toArray()
-    const busyPrefixes = openHandovers.map((h) => normalizePlate(h.plate))
+    const busyPrefixes = new Set(openHandovers.map((h) => normalizePlate(h.plate)))
 
-    const filter: Record<string, unknown> = { prefix: { $nin: busyPrefixes } }
+    const filter: Record<string, unknown> = {}
 
     if (query) {
       filter.$or = [
@@ -148,6 +148,7 @@ export async function listVehiclesAction(query = '') {
         plate: v.plate,
         model: v.model,
         year: v.year,
+        isBusy: busyPrefixes.has(v.prefix),
       })),
     }
   } catch (error) {

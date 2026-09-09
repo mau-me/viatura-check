@@ -6,44 +6,61 @@ import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Textarea } from '@/components/ui/textarea'
 
+const LEVEL_OPTIONS = ['vazio', '1/4', '2/4', '3/4', 'cheio'] as const
+
 interface Props {
   slug: string
   label: string
-  value?: 'ok' | 'alteracao'
-  onChange?: (value: 'ok' | 'alteracao') => void
+  type?: 'boolean' | 'level'
+  value?: string
+  onChange?: (value: string) => void
 }
 
-export function ChecklistItem({ slug, label, value = 'ok', onChange }: Props) {
-  const [status, setStatus] = useState<'ok' | 'alteracao'>(value)
+export function ChecklistItem({ slug, label, type = 'boolean', value, onChange }: Props) {
+  const defaultValue = type === 'level' ? 'cheio' : 'ok'
+  const [status, setStatus] = useState(value || defaultValue)
 
   const handleChange = (v: string) => {
-    const next = v === 'alteracao' ? 'alteracao' : 'ok'
-    setStatus(next)
-    onChange?.(next)
+    setStatus(v)
+    onChange?.(v)
   }
 
   return (
     <div className="space-y-3 rounded-lg border p-3">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+      <div className={cn(
+        'flex flex-col gap-2',
+        type === 'boolean' ? 'sm:flex-row sm:items-center sm:justify-between sm:gap-3' : 'sm:flex-col sm:gap-2'
+      )}>
         <Label className="text-sm font-medium leading-tight">{label}</Label>
         <RadioGroup
           name={`check_${slug}`}
           value={status}
           onValueChange={handleChange}
-          className="flex w-full flex-row flex-wrap gap-3 sm:w-auto sm:shrink-0"
+          className="flex w-full flex-row flex-wrap gap-3"
         >
-          <div className="flex items-center gap-1.5">
-            <RadioGroupItem value="ok" className="data-checked:bg-primary" />
-            <span className="text-sm">OK</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <RadioGroupItem value="alteracao" className="data-checked:bg-destructive" />
-            <span className="text-sm">Com Alteração</span>
-          </div>
+          {type === 'boolean' ? (
+            <>
+              <div className="flex items-center gap-1.5">
+                <RadioGroupItem value="ok" className="data-checked:bg-primary" />
+                <span className="text-sm">OK</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <RadioGroupItem value="alteracao" className="data-checked:bg-destructive" />
+                <span className="text-sm">Com Alteração</span>
+              </div>
+            </>
+          ) : (
+            LEVEL_OPTIONS.map((opt) => (
+              <div key={opt} className="flex items-center gap-1.5">
+                <RadioGroupItem value={opt} className="data-checked:bg-primary" />
+                <span className="text-sm">{opt}</span>
+              </div>
+            ))
+          )}
         </RadioGroup>
       </div>
 
-      {status === 'alteracao' && (
+      {type === 'boolean' && status === 'alteracao' && (
         <Textarea
           name={`obs_${slug}`}
           rows={2}
