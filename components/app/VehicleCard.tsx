@@ -1,6 +1,7 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Pencil, Trash2 } from 'lucide-react'
 import type { VehicleRow } from './VehicleTable'
 
@@ -14,7 +15,12 @@ export function VehicleCard({ vehicle, onEdit, onDelete }: VehicleCardProps) {
   return (
     <div className="rounded-lg border p-4 space-y-2">
       <div>
-        <p className="font-mono font-medium">{vehicle.prefix}</p>
+        <div className="flex items-center gap-2">
+          <p className="font-mono font-medium">{vehicle.prefix}</p>
+          <Badge variant={vehicle.isBusy ? 'destructive' : 'outline'}>
+            {vehicle.isBusy ? 'Em uso' : 'Disponível'}
+          </Badge>
+        </div>
         <p className="text-sm text-muted-foreground">
           {vehicle.plate || '—'} &middot; {vehicle.model || '—'} &middot; {vehicle.year || '—'}
         </p>

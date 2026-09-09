@@ -1,6 +1,7 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import {
   Table,
   TableBody,
@@ -17,6 +18,7 @@ export interface VehicleRow {
   plate?: string
   model?: string
   year?: number
+  isBusy?: boolean
 }
 
 interface VehicleTableProps {
@@ -35,6 +37,7 @@ export function VehicleTable({ vehicles, onEdit, onDelete }: VehicleTableProps) 
             <TableHead>Placa</TableHead>
             <TableHead>Modelo</TableHead>
             <TableHead>Ano</TableHead>
+            <TableHead>Status</TableHead>
             <TableHead className="text-right">Ações</TableHead>
           </TableRow>
         </TableHeader>
@@ -45,6 +48,11 @@ export function VehicleTable({ vehicles, onEdit, onDelete }: VehicleTableProps) 
               <TableCell className="font-mono">{v.plate || '—'}</TableCell>
               <TableCell>{v.model || '—'}</TableCell>
               <TableCell>{v.year || '—'}</TableCell>
+              <TableCell>
+                <Badge variant={v.isBusy ? 'destructive' : 'outline'}>
+                  {v.isBusy ? 'Em uso' : 'Disponível'}
+                </Badge>
+              </TableCell>
               <TableCell className="text-right">
                 <div className="flex justify-end gap-1">
                   <Button variant="ghost" size="sm" onClick={() => onEdit(v)} aria-label="Editar">
