@@ -55,13 +55,13 @@ export function Header({
             <Menu className="h-5 w-5" />
           </Button>
 
-          <a href="/" className="hidden lg:flex items-center gap-2">
+          <a href="/" className="flex items-center gap-2">
             <img
               src="/brasao_cipe_polo_sem_fundo.png"
               alt="Viatura"
-              className="h-10 w-10 object-contain"
+              className="h-10 w-10 object-contain lg:h-10 lg:w-10"
             />
-            <span className="font-bold text-xl">Viatura</span>
+            <span className="hidden font-bold text-xl lg:inline">Viatura</span>
           </a>
         </div>
 
