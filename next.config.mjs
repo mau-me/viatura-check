@@ -2,6 +2,11 @@ import withPWA from "next-pwa";
 
 const nextConfig = {
   images: { unoptimized: true },
+  experimental: {
+    serverActions: {
+      runtime: 'nodejs',
+    },
+  },
 };
 
 export default withPWA({
