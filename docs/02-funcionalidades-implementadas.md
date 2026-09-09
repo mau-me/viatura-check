@@ -121,12 +121,13 @@ Há pré-visualização antes do envio e botão para remover a foto.
 **Status:** ✅ Implementado
 **Requisitos:** RF-05, RF-06
 
-**O que faz:** apresenta os 11 itens do checklist com seleção **OK** ou **Com Alteração** (radio
-group). Quando "Com Alteração" é selecionado, exibe uma caixa de texto para descrever a alteração.
+**O que faz:** apresenta os 12 itens do checklist com seleção de status. Itens do tipo
+**boolean** usam OK / Com Alteração (com textarea opcional). Itens do tipo **nível** usam
+Vazio / 1/4 / 2/4 / 3/4 / Cheio.
 
 **Arquivos:**
 - `components/app/ChecklistItem.tsx` — item do checklist (radio + textarea condicional)
-- `lib/validation.ts` — constante `CHECKLIST_ITEMS` (11 itens e labels)
+- `lib/validation.ts` — constante `CHECKLIST_ITEMS` (12 itens e labels)
 
 **Itens do checklist:**
 1. Óleo do Motor (`oleo_motor`)
@@ -138,8 +139,9 @@ group). Quando "Com Alteração" é selecionado, exibe uma caixa de texto para d
 7. Limpeza (`limpeza`)
 8. Iluminação (Farol, Lanterna e Piscas) (`iluminacao`)
 9. Retrovisores (Condição, Regulagem e Espelhos) (`retrovisores`)
-10. AD Blue (ARLA) (`ad_blue`)
-11. Giroflex e Sirene (`giroflex_sirene`)
+10. Giroflex e Sirene (`giroflex_sirene`)
+11. Combustível (`combustivel`) — nível: Vazio / 1/4 / 2/4 / 3/4 / Cheio
+12. AD Blue (ARLA) (`ad_blue`) — nível: Vazio / 1/4 / 2/4 / 3/4 / Cheio
 
 ---
 

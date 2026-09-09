@@ -80,8 +80,10 @@ Estrutura do documento com fluxo de duas fases (carga + devolução):
     identificacao_visual:   "ok" | "alteracao",
     limpeza:                "ok" | "alteracao",
     iluminacao:             "ok" | "alteracao",
-    ad_blue:                "ok" | "alteracao",
-    giroflex_sirene:        "ok" | "alteracao"
+    retrovisores:           "ok" | "alteracao",
+    giroflex_sirene:        "ok" | "alteracao",
+    combustivel:            "vazio" | "1/4" | "2/4" | "3/4" | "cheio",
+    ad_blue:                "vazio" | "1/4" | "2/4" | "3/4" | "cheio"
   },
   departureChecklistObs: {          // observações dos itens com alteração
     oleo_motor: "Nível do óleo abaixo do mínimo"
