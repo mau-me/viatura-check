@@ -99,8 +99,9 @@ export function ReturnForm({ id }: { id: string }) {
           router.push(`/sucesso?id=${id}&phase=return`)
         }
       } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error ?? 'Erro desconhecido')
         console.error('Erro ao registrar devolução:', error)
-        toast.error(`Erro inesperado: ${(error as Error).message}. Tente novamente.`)
+        toast.error(`Erro inesperado: ${msg}. Tente novamente.`)
       }
     })
   }

@@ -90,8 +90,9 @@ export function DepartureForm() {
           router.push(`/sucesso?id=${res.id}&phase=departure`)
         }
       } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error ?? 'Erro desconhecido')
         console.error('Erro ao criar carga:', error)
-        toast.error(`Erro inesperado: ${(error as Error).message}. Tente novamente.`)
+        toast.error(`Erro inesperado: ${msg}. Tente novamente.`)
       }
     })
   }

@@ -2,7 +2,7 @@
 
 import { useRef } from 'react'
 import { Camera } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, compressImage } from '@/lib/utils'
 
 interface Props {
   label: string
@@ -13,6 +13,17 @@ interface Props {
 
 export function PhotoCapture({ label, value, preview, onChange }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
+
+  const handleChange = async (file: File | null) => {
+    if (!file) { onChange(null); return }
+    try {
+      const compressed = await compressImage(file)
+      onChange(compressed)
+    } catch (error) {
+      console.error(`Erro ao comprimir ${label}:`, error)
+      onChange(file)
+    }
+  }
 
   return (
     <div
@@ -28,7 +39,7 @@ export function PhotoCapture({ label, value, preview, onChange }: Props) {
         accept="image/*"
         capture="environment"
         className="hidden"
-        onChange={(e) => onChange(e.target.files?.[0] ?? null)}
+        onChange={(e) => handleChange(e.target.files?.[0] ?? null)}
       />
       {preview ? (
         // eslint-disable-next-line @next/next/no-img-element
