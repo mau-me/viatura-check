@@ -26,7 +26,15 @@ interface Vehicle {
   plate: string
   model: string
   year: number
+  isBusy?: boolean
 }
+
+const SERVICE_TYPE_OPTIONS = [
+  { value: 'ordinario', label: 'Ordinário' },
+  { value: 'intensificacao_tatica', label: 'Intensificação Tática' },
+  { value: 'adm', label: 'ADM' },
+  { value: 'outros', label: 'Outros' },
+] as const
 
 export function DepartureForm() {
   const { user } = useAuth()
@@ -73,12 +81,10 @@ export function DepartureForm() {
     const formData = new FormData(e.currentTarget)
     formData.set('prefix', selectedVehicle.prefix)
     formData.set('plate', selectedVehicle.plate || '')
+    formData.set('service_type', serviceType)
     for (const { key } of PHOTO_KEYS) {
       const f = photos[key].file
       if (f) formData.set(`photo_${key}`, f)
-    }
-    if (!formData.get('service_type')) {
-      formData.set('service_type', 'ordinario')
     }
 
     startTransition(async () => {
@@ -130,11 +136,19 @@ export function DepartureForm() {
                   <SelectValue placeholder="Selecione a viatura" />
                 </SelectTrigger>
                 <SelectContent>
-                  {vehicles.map((v) => (
-                    <SelectItem key={v._id} value={v.prefix}>
-                      {v.prefix}{v.plate ? ` — ${v.plate}` : ''}{v.model ? ` (${v.model})` : ''}
+                  {vehicles.filter((v) => !v.isBusy).length === 0 ? (
+                    <SelectItem value="__none" disabled>
+                      Nenhuma viatura disponível
                     </SelectItem>
-                  ))}
+                  ) : (
+                    vehicles
+                      .filter((v) => !v.isBusy)
+                      .map((v) => (
+                        <SelectItem key={v._id} value={v.prefix}>
+                          {v.prefix}{v.plate ? ` — ${v.plate}` : ''}{v.model ? ` (${v.model})` : ''}
+                        </SelectItem>
+                      ))
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -162,15 +176,18 @@ export function DepartureForm() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label>Tipo *</Label>
-              <Select name="service_type" defaultValue="ordinario" onValueChange={(v) => { if (v) setServiceType(v) }}>
+              <Select name="service_type" value={serviceType} onValueChange={(v) => { if (v) setServiceType(v) }}>
                 <SelectTrigger className="w-full">
-                  <SelectValue />
+                  <SelectValue>
+                    {(value: string) =>
+                      SERVICE_TYPE_OPTIONS.find((o) => o.value === value)?.label ?? value ?? 'Selecione'
+                    }
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ordinario">Ordinário</SelectItem>
-                  <SelectItem value="intensificacao_tatica">Intensificação Tática</SelectItem>
-                  <SelectItem value="adm">ADM</SelectItem>
-                  <SelectItem value="outros">Outros</SelectItem>
+                  {SERVICE_TYPE_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -200,7 +217,13 @@ export function DepartureForm() {
           </CardHeader>
           <CardContent className="space-y-4">
             {CHECKLIST_ITEMS.map((item) => (
-              <ChecklistItem key={item.key} slug={item.key} label={item.label} type={item.type} />
+              <ChecklistItem
+                key={item.key}
+                slug={item.key}
+                label={item.label}
+                type={item.type}
+                options={'options' in item ? item.options : undefined}
+              />
             ))}
           </CardContent>
         </Card>

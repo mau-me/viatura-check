@@ -84,6 +84,7 @@ Estrutura do documento com fluxo de duas fases (carga + devolução):
     iluminacao:             "ok" | "alteracao",
     retrovisores:           "ok" | "alteracao",
     giroflex_sirene:        "ok" | "alteracao",
+    opcao_abastecimento:   "cartao" | "talao" | "nao_encontrado",
     combustivel:            "vazio" | "1/4" | "2/4" | "3/4" | "cheio",
     ad_blue:                "vazio" | "1/4" | "2/4" | "3/4" | "cheio"
   },

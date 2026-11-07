@@ -114,11 +114,12 @@ const CHECKLIST_KEYS = [
   'iluminacao',
   'retrovisores',
   'giroflex_sirene',
+  'opcao_abastecimento',
   'combustivel',
   'ad_blue',
 ] as const
 
-const VALID_CHECKLIST_VALUES = ['ok', 'alteracao', 'vazio', '1/4', '2/4', '3/4', 'cheio'] as const
+const VALID_CHECKLIST_VALUES = ['ok', 'alteracao', 'vazio', '1/4', '2/4', '3/4', 'cheio', 'cartao', 'talao', 'nao_encontrado'] as const
 
 export async function createDepartureAction(formData: FormData) {
   try {
@@ -170,7 +171,7 @@ export async function createDepartureAction(formData: FormData) {
       serviceType: (formData.get('service_type') as string) || 'ordinario',
       serviceTypeOther: (formData.get('service_type_other') as string) || '',
       km_initial: formData.get('km_initial'),
-      departureChecklist: {} as Record<string, 'ok' | 'alteracao' | 'vazio' | '1/4' | '2/4' | '3/4' | 'cheio'>,
+      departureChecklist: {} as Record<string, 'ok' | 'alteracao' | 'vazio' | '1/4' | '2/4' | '3/4' | 'cheio' | 'cartao' | 'talao' | 'nao_encontrado'>,
       departureChecklistObs: {} as Record<string, string>,
       departureObservations: formData.get('observations'),
     }
@@ -180,7 +181,7 @@ export async function createDepartureAction(formData: FormData) {
       if (!VALID_CHECKLIST_VALUES.includes(status as typeof VALID_CHECKLIST_VALUES[number])) {
         return { error: `Status inválido para o item ${item}` }
       }
-      raw.departureChecklist[item] = status as 'ok' | 'alteracao' | 'vazio' | '1/4' | '2/4' | '3/4' | 'cheio'
+      raw.departureChecklist[item] = status as 'ok' | 'alteracao' | 'vazio' | '1/4' | '2/4' | '3/4' | 'cheio' | 'cartao' | 'talao' | 'nao_encontrado'
       if (status === 'alteracao') {
         raw.departureChecklistObs[item] = (formData.get(`obs_${item}`) as string || '').trim()
       }

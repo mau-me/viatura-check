@@ -122,9 +122,11 @@ export async function listVehiclesAction(query = '') {
       .collection('handovers')
       .find({ status: 'aberto' }, { projection: { plate: 1, prefix: 1 } })
       .toArray()
-    const busyPrefixes = new Set(
-      openHandovers.map((h) => normalizePlate((h.prefix as string) || (h.plate as string)))
-    )
+    const busyKeys = new Set<string>()
+    for (const h of openHandovers) {
+      if (h.prefix) busyKeys.add(normalizePlate(h.prefix as string))
+      if (h.plate) busyKeys.add(normalizePlate(h.plate as string))
+    }
 
     const filter: Record<string, unknown> = {}
 
@@ -150,7 +152,9 @@ export async function listVehiclesAction(query = '') {
         plate: v.plate,
         model: v.model,
         year: v.year,
-        isBusy: busyPrefixes.has(normalizePlate(v.prefix as string)),
+        isBusy:
+          busyKeys.has(normalizePlate(v.prefix as string)) ||
+          (!!v.plate && busyKeys.has(normalizePlate(v.plate as string))),
       })),
     }
   } catch (error) {

@@ -13,6 +13,16 @@ export const CHECKLIST_ITEMS = [
   { key: 'iluminacao', label: 'Iluminação (Farol, Lanterna e Piscas)', type: 'boolean' as const },
   { key: 'retrovisores', label: 'Retrovisores (Condição, Regulagem e Espelhos)', type: 'boolean' as const },
   { key: 'giroflex_sirene', label: 'Giroflex e Sirene', type: 'boolean' as const },
+  {
+    key: 'opcao_abastecimento',
+    label: 'Opção de Abastecimento',
+    type: 'option' as const,
+    options: [
+      { value: 'cartao', label: 'Cartão' },
+      { value: 'talao', label: 'Talão' },
+      { value: 'nao_encontrado', label: 'Não Encontrado' },
+    ] as const,
+  },
   { key: 'combustivel', label: 'Combustível', type: 'level' as const },
   { key: 'ad_blue', label: 'AD Blue (ARLA)', type: 'level' as const },
 ] as const
@@ -25,7 +35,7 @@ export const PHOTO_KEYS = [
   { key: 'painel', label: 'Painel do Veículo (Aceso e com Hodômetro Visível)' },
 ] as const
 
-const statusSchema = z.enum(['ok', 'alteracao', 'vazio', '1/4', '2/4', '3/4', 'cheio'])
+const statusSchema = z.enum(['ok', 'alteracao', 'vazio', '1/4', '2/4', '3/4', 'cheio', 'cartao', 'talao', 'nao_encontrado'])
 
 const officerLoginSchema = z.object({
   patente: z.enum(PATENTE_OPTIONS, 'Patente obrigatória'),

@@ -12,6 +12,14 @@ import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ArrowRight, Lock, CheckCircle2, ArrowLeft } from 'lucide-react'
 
+const STATUS_LABELS: Record<string, string> = {
+  vazio: 'Vazio',
+  cheio: 'Cheio',
+  cartao: 'Cartão',
+  talao: 'Talão',
+  nao_encontrado: 'Não Encontrado',
+}
+
 type RecordData = {
   _id: string
   plate: string
@@ -120,12 +128,14 @@ export function HandoverDetailClient({ id }: { id: string }) {
                     <p className="text-sm text-destructive">{record.departureChecklistObs[item.key]}</p>
                   )}
                 </div>
-                {isBoolean ? (
+                {!status ? (
+                  <Badge variant="outline">Não informado</Badge>
+                ) : isBoolean ? (
                   <Badge variant={status === 'ok' ? 'default' : 'destructive'}>
                     {status === 'ok' ? 'OK' : 'Com Alteração'}
                   </Badge>
                 ) : (
-                  <Badge variant="outline">{status}</Badge>
+                  <Badge variant="outline">{STATUS_LABELS[status] ?? status}</Badge>
                 )}
               </div>
             )

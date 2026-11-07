@@ -6,18 +6,25 @@ import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Textarea } from '@/components/ui/textarea'
 
-const LEVEL_OPTIONS = ['vazio', '1/4', '2/4', '3/4', 'cheio'] as const
+const LEVEL_OPTIONS = [
+  { value: 'vazio', label: 'Vazio' },
+  { value: '1/4', label: '1/4' },
+  { value: '2/4', label: '2/4' },
+  { value: '3/4', label: '3/4' },
+  { value: 'cheio', label: 'Cheio' },
+] as const
 
 interface Props {
   slug: string
   label: string
-  type?: 'boolean' | 'level'
+  type?: 'boolean' | 'level' | 'option'
+  options?: readonly { value: string; label: string }[]
   value?: string
   onChange?: (value: string) => void
 }
 
-export function ChecklistItem({ slug, label, type = 'boolean', value, onChange }: Props) {
-  const defaultValue = type === 'level' ? 'cheio' : 'ok'
+export function ChecklistItem({ slug, label, type = 'boolean', options, value, onChange }: Props) {
+  const defaultValue = type === 'level' ? 'cheio' : type === 'option' ? (options?.[0]?.value || 'cartao') : 'ok'
   const [status, setStatus] = useState(value || defaultValue)
 
   const handleChange = (v: string) => {
@@ -49,11 +56,18 @@ export function ChecklistItem({ slug, label, type = 'boolean', value, onChange }
                 <span className="text-sm">Com Alteração</span>
               </div>
             </>
-          ) : (
+          ) : type === 'level' ? (
             LEVEL_OPTIONS.map((opt) => (
-              <div key={opt} className="flex items-center gap-1.5">
-                <RadioGroupItem value={opt} className="data-checked:bg-primary" />
-                <span className="text-sm">{opt}</span>
+              <div key={opt.value} className="flex items-center gap-1.5">
+                <RadioGroupItem value={opt.value} className="data-checked:bg-primary" />
+                <span className="text-sm">{opt.label}</span>
+              </div>
+            ))
+          ) : (
+            (options || []).map((opt) => (
+              <div key={opt.value} className="flex items-center gap-1.5">
+                <RadioGroupItem value={opt.value} className="data-checked:bg-primary" />
+                <span className="text-sm">{opt.label}</span>
               </div>
             ))
           )}
