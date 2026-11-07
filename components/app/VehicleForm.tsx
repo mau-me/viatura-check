@@ -103,12 +103,13 @@ export function VehicleForm({ open, onOpenChange, vehicle, onSuccess }: VehicleF
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="plate">Placa</Label>
+        <Label htmlFor="plate">Placa *</Label>
         <Input
           id="plate"
           value={form.plate}
           onChange={(e) => setForm({ ...form, plate: e.target.value.toUpperCase() })}
           placeholder="ABC1D23"
+          required
         />
       </div>
       <div className="space-y-2">

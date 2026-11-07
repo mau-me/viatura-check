@@ -28,7 +28,8 @@
 
 1. Prefixo único — não pode haver duas viaturas com o mesmo prefixo.
 2. Prefixo no formato `N.NNNN` (ex.: `7.1301`), validado por regex `^\d\.\d{4}$`.
-3. Placa normalizada em maiúsculas, sem caracteres especiais.
+3. Placa obrigatória, normalizada em maiúsculas, sem caracteres especiais (`vehicleSchema` — `lib/validation.ts`).
+4. Prefixo e placa são distintos.
 
 ### Índices recomendados
 
@@ -49,7 +50,8 @@ Estrutura do documento com fluxo de duas fases (carga + devolução):
   status: "aberto" | "fechado",
 
   // --- DADOS DA VIATURA ---
-  plate: "ABC1D23",                 // normalizado: maiúsculas, sem caracteres especiais
+  prefix: "7.1301",                 // obrigatório, formato N.NNNN
+  plate: "ABC1D23",                 // placa real da viatura, normalizada: maiúsculas, sem caracteres especiais
 
   // --- FASE 1: CARGA (SAÍDA) ---
   departureOfficer: {               // policial que fez a carga (matrícula do login)
@@ -168,6 +170,7 @@ Gerenciado pelo driver (`lib/gridfs.ts`). Gera as coleções:
 
 ```js
 db.handovers.createIndex({ createdAt: -1 })
+db.handovers.createIndex({ prefix: 1 })
 db.handovers.createIndex({ plate: 1 })
 db.handovers.createIndex({ 'departureOfficer.matricula': 1 })
 db.handovers.createIndex({ status: 1 })
@@ -200,7 +203,8 @@ db.vehicles.createIndex({ plate: 1 })
 
 ## 7. Regras de negócio na persistência
 
-1. Placa/prefixo obrigatório, normalizada em maiúsculas (sem caracteres especiais).
+1. Prefixo obrigatório (`N.NNNN`) e placa obrigatória na viatura, normalizada em maiúsculas (sem caracteres especiais).
+2. Registros legados de `handovers` podem ter `plate` contendo o prefixo (época em que a placa da viatura era opcional/vazia); são resolvidos via `vehicles` com comparação normalizada e corrigidos com `npm run db:backfill` (`scripts/backfill-handover-prefix.mjs`).
 2. Kilometragem final **≥** inicial (refine do Zod — `lib/validation.ts`).
 3. Todos os 10 itens do checklist devem ter status `ok` ou `alteracao`.
 4. As 5 fotos são obrigatórias em cada fase; tamanho máximo por foto = `MAX_PHOTO_SIZE_MB`.

@@ -15,6 +15,7 @@ import { Loader2, Plus, ArrowRight, Car, Clock, CheckCircle2 } from 'lucide-reac
 interface OpenRecord {
   _id: string
   plate: string
+  prefix?: string
   kilometers: { initial: number; final: number | null }
   createdAt: string
 }
@@ -22,6 +23,7 @@ interface OpenRecord {
 interface HistoryRecord {
   _id: string
   plate: string
+  prefix?: string
   status: string
   departureOfficer: { nome: string; matricula: string }
   kilometers: { initial: number; final: number | null }
@@ -94,7 +96,10 @@ export function UserDashboardClient() {
           </CardHeader>
           <CardContent className="space-y-3">
             <div>
-              <p className="font-mono text-lg font-bold">{openRecord.plate}</p>
+              <p className="font-mono text-lg font-bold">{openRecord.prefix || openRecord.plate}</p>
+              {openRecord.prefix && openRecord.plate && openRecord.plate !== openRecord.prefix && (
+                <p className="text-xs text-muted-foreground">{openRecord.plate}</p>
+              )}
               <p className="text-sm text-muted-foreground">
                 Km inicial: {openRecord.kilometers.initial}
               </p>
@@ -144,7 +149,10 @@ export function UserDashboardClient() {
             <Card key={r._id} className="cursor-pointer" onClick={() => router.push(`/admin/${r._id}`)}>
               <CardContent className="flex items-center justify-between p-4">
                 <div>
-                  <p className="font-mono font-semibold">{r.plate}</p>
+                  <p className="font-mono font-semibold">{r.prefix || r.plate}</p>
+                  {r.prefix && r.plate && r.plate !== r.prefix && (
+                    <p className="text-xs text-muted-foreground">{r.plate}</p>
+                  )}
                   <p className="text-xs text-muted-foreground">
                     {format(new Date(r.createdAt), "dd/MM/yyyy", { locale: ptBR })}
                     {r.kilometers.final != null && (

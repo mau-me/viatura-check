@@ -25,6 +25,7 @@ import { Loader2, Search, Lock, Trash2 } from 'lucide-react'
 interface HandoverRecord {
   _id: string
   plate: string
+  prefix?: string
   status: string
   departureOfficer: { nome: string; matricula: string }
   kilometers: { initial: number; final: number | null }
@@ -135,7 +136,12 @@ export function AdminRecordsClient() {
               <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
                 <div>
                   <div className="flex items-center gap-2">
-                    <p className="font-mono font-semibold">{r.plate}</p>
+                    <div>
+                      <p className="font-mono font-semibold">{r.prefix || r.plate}</p>
+                      {r.prefix && r.plate && r.plate !== r.prefix && (
+                        <p className="text-xs text-muted-foreground">{r.plate}</p>
+                      )}
+                    </div>
                     {r.status === 'aberto' ? (
                       <Badge variant="default">
                         <Lock className="mr-1 h-3 w-3" />
@@ -183,7 +189,7 @@ export function AdminRecordsClient() {
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir registro?</AlertDialogTitle>
             <AlertDialogDescription>
-              O registro <span className="font-mono">{deleteTarget?.plate}</span> e suas fotos serão
+              O registro <span className="font-mono">{deleteTarget?.prefix || deleteTarget?.plate}</span> e suas fotos serão
               excluídos permanentemente. Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -202,7 +208,7 @@ export function AdminRecordsClient() {
           <AlertDialogHeader>
             <AlertDialogTitle>Fechar registro?</AlertDialogTitle>
             <AlertDialogDescription>
-              O registro <span className="font-mono">{closeTarget?.plate}</span> será marcado como fechado
+              O registro <span className="font-mono">{closeTarget?.prefix || closeTarget?.plate}</span> será marcado como fechado
               sem registro de devolução. Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>

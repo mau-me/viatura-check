@@ -7,7 +7,7 @@ import { ObjectId } from 'mongodb'
 import { requireAdmin } from '@/lib/jwt'
 
 function normalizePlate(raw: string): string {
-  const cleaned = raw.replace(/[^A-Za-z0-9.]/g, '').toUpperCase()
+  const cleaned = (raw || '').replace(/[^A-Za-z0-9.]/g, '').toUpperCase()
   if (/^\d{5}$/.test(cleaned)) {
     return cleaned.slice(0, 1) + '.' + cleaned.slice(1)
   }
@@ -120,9 +120,11 @@ export async function listVehiclesAction(query = '') {
 
     const openHandovers = await db
       .collection('handovers')
-      .find({ status: 'aberto' }, { projection: { plate: 1 } })
+      .find({ status: 'aberto' }, { projection: { plate: 1, prefix: 1 } })
       .toArray()
-    const busyPrefixes = new Set(openHandovers.map((h) => normalizePlate(h.plate)))
+    const busyPrefixes = new Set(
+      openHandovers.map((h) => normalizePlate((h.prefix as string) || (h.plate as string)))
+    )
 
     const filter: Record<string, unknown> = {}
 
@@ -148,7 +150,7 @@ export async function listVehiclesAction(query = '') {
         plate: v.plate,
         model: v.model,
         year: v.year,
-        isBusy: busyPrefixes.has(v.prefix),
+        isBusy: busyPrefixes.has(normalizePlate(v.prefix as string)),
       })),
     }
   } catch (error) {

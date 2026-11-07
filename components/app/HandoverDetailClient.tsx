@@ -15,6 +15,7 @@ import { ArrowRight, Lock, CheckCircle2, ArrowLeft } from 'lucide-react'
 type RecordData = {
   _id: string
   plate: string
+  prefix?: string
   status: string
   departureOfficer: { patente: string; nome: string; matricula: string }
   deliveringOfficer?: { patente: string; nome: string }
@@ -41,7 +42,7 @@ export function HandoverDetailClient({ id }: { id: string }) {
   useEffect(() => {
     getHandoverByIdAction(id).then((res) => {
       if (res.error) router.push('/admin')
-      else setRecord(res.record as RecordData)
+      else setRecord(res.record as unknown as RecordData)
       setLoading(false)
     })
   }, [id, router])
@@ -61,7 +62,12 @@ export function HandoverDetailClient({ id }: { id: string }) {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="font-mono">{record.plate}</CardTitle>
+            <div>
+              <CardTitle className="font-mono">{record.prefix || record.plate}</CardTitle>
+              {record.prefix && record.plate && record.plate !== record.prefix && (
+                <p className="text-xs text-muted-foreground">{record.plate}</p>
+              )}
+            </div>
             {isOpen ? (
               <Badge variant="default"><Lock className="mr-1 h-3 w-3" /> Em Aberto</Badge>
             ) : (

@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { connectToDatabase } from '@/lib/mongodb'
 import { uploadPhoto, deletePhoto } from '@/lib/gridfs'
 import { departureSchema, returnSchema, PHOTO_KEYS } from '@/lib/validation'
-import { ObjectId } from 'mongodb'
+import { ObjectId, type Db } from 'mongodb'
 import { getSession } from '@/lib/jwt'
 import { findUserByMatricula } from '@/lib/auth'
 
@@ -17,11 +17,90 @@ function checkBufferAvailable(): void {
 }
 
 function normalizePlate(raw: string): string {
-  const cleaned = raw.replace(/[^A-Za-z0-9.]/g, '').toUpperCase()
+  const cleaned = (raw || '').replace(/[^A-Za-z0-9.]/g, '').toUpperCase()
   if (/^\d{5}$/.test(cleaned)) {
     return cleaned.slice(0, 1) + '.' + cleaned.slice(1)
   }
   return cleaned
+}
+
+interface VehicleRef {
+  prefix: string
+  plate: string
+}
+
+interface VehicleMaps {
+  byPrefix: Map<string, VehicleRef>
+  byPlate: Map<string, VehicleRef>
+}
+
+async function loadVehicleMaps(db: Db): Promise<VehicleMaps> {
+  const vehicles = await db
+    .collection('vehicles')
+    .find({}, { projection: { prefix: 1, plate: 1 } })
+    .toArray()
+  const byPrefix = new Map<string, VehicleRef>()
+  const byPlate = new Map<string, VehicleRef>()
+  const ambiguousPrefix = new Set<string>()
+  const ambiguousPlate = new Set<string>()
+  for (const v of vehicles) {
+    if (!v.prefix || typeof v.prefix !== 'string') continue
+    const ref: VehicleRef = { prefix: v.prefix, plate: typeof v.plate === 'string' ? v.plate : '' }
+    const kp = normalizePlate(v.prefix as string)
+    if (kp) {
+      if (byPrefix.has(kp) && byPrefix.get(kp)?.prefix !== ref.prefix) ambiguousPrefix.add(kp)
+      else byPrefix.set(kp, ref)
+    }
+    if (v.plate && typeof v.plate === 'string') {
+      const kl = normalizePlate(v.plate as string)
+      if (kl) {
+        if (byPlate.has(kl) && byPlate.get(kl)?.prefix !== ref.prefix) ambiguousPlate.add(kl)
+        else byPlate.set(kl, ref)
+      }
+    }
+  }
+  ambiguousPrefix.forEach((k) => byPrefix.delete(k))
+  ambiguousPlate.forEach((k) => byPlate.delete(k))
+  return { byPrefix, byPlate }
+}
+
+function resolveFromMaps(doc: Record<string, unknown>, maps: VehicleMaps): VehicleRef {
+  const explicitPrefix = typeof doc.prefix === 'string' ? doc.prefix.trim() : ''
+  const explicitPlate = typeof doc.plate === 'string' ? doc.plate.trim() : ''
+  if (
+    explicitPrefix &&
+    explicitPlate &&
+    normalizePlate(explicitPrefix) !== normalizePlate(explicitPlate)
+  ) {
+    return { prefix: explicitPrefix, plate: explicitPlate }
+  }
+  const keys = [normalizePlate(explicitPrefix), normalizePlate(explicitPlate)].filter(Boolean)
+  for (const key of keys) {
+    const vehicle = maps.byPrefix.get(key) || maps.byPlate.get(key)
+    if (vehicle) {
+      return { prefix: vehicle.prefix, plate: vehicle.plate || explicitPlate }
+    }
+  }
+  if (explicitPrefix && !explicitPlate) return { prefix: explicitPrefix, plate: '' }
+  return { prefix: explicitPrefix, plate: explicitPlate }
+}
+
+async function resolveVehicle(db: Db, doc: Record<string, unknown>): Promise<VehicleRef> {
+  const maps = await loadVehicleMaps(db)
+  return resolveFromMaps(doc, maps)
+}
+
+async function resolveVehicles(
+  db: Db,
+  docs: Record<string, unknown>[]
+): Promise<Map<string, VehicleRef>> {
+  const result = new Map<string, VehicleRef>()
+  if (docs.length === 0) return result
+  const maps = await loadVehicleMaps(db)
+  for (const d of docs) {
+    result.set(d._id?.toString() || '', resolveFromMaps(d, maps))
+  }
+  return result
 }
 
 const CHECKLIST_KEYS = [
@@ -51,24 +130,30 @@ export async function createDepartureAction(formData: FormData) {
 
     const { db } = await connectToDatabase()
 
+    const plate = (formData.get('plate') as string) || ''
+    const prefix = (formData.get('prefix') as string) || ''
+
+    const vehicleOr: Record<string, unknown>[] = []
+    if (prefix) vehicleOr.push({ prefix }, { plate: prefix }, { plate: normalizePlate(prefix) })
+    if (plate) vehicleOr.push({ plate }, { plate: normalizePlate(plate) })
     const existingOpen = await db.collection('handovers').findOne({
       status: 'aberto',
       $or: [
         { 'departureOfficer.matricula': session.matricula },
-        { plate: normalizePlate((formData.get('plate') as string) || '') },
+        ...vehicleOr,
       ],
     })
     if (existingOpen) {
       if (existingOpen.departureOfficer?.matricula === session.matricula) {
         return { error: 'Você já possui uma viatura em aberto. Finalize a devolução antes de registrar outra carga.' }
       }
-      return { error: `A viatura ${existingOpen.plate} já possui um registro em aberto.` }
+      const label = existingOpen.prefix || normalizePlate(existingOpen.plate) || existingOpen.plate
+      return { error: `A viatura ${label} já possui um registro em aberto.` }
     }
-
-    const plate = normalizePlate((formData.get('plate') as string) || '')
 
     const raw = {
       plate,
+      prefix,
       departureOfficer: {
         patente: user.patente,
         nome: user.nome,
@@ -106,6 +191,7 @@ export async function createDepartureAction(formData: FormData) {
       return { error: parsed.error.issues[0]?.message || 'Dados inválidos' }
     }
 
+    const photoLabel = prefix || plate
     const photoIds: Record<string, string> = {}
     for (const { key } of PHOTO_KEYS) {
       const file = formData.get(`photo_${key}`) as File | null
@@ -118,7 +204,7 @@ export async function createDepartureAction(formData: FormData) {
       try {
         checkBufferAvailable()
         const buffer = Buffer.from(await file.arrayBuffer())
-        const id = await uploadPhoto(buffer, `${plate}_${key}_departure.jpg`, file.type || 'image/jpeg')
+        const id = await uploadPhoto(buffer, `${photoLabel}_${key}_departure.jpg`, file.type || 'image/jpeg')
         photoIds[key] = id
       } catch (uploadError) {
         console.error(`Erro no upload da foto "${key}":`, uploadError)
@@ -129,7 +215,8 @@ export async function createDepartureAction(formData: FormData) {
     const now = new Date()
     const result = await db.collection('handovers').insertOne({
       status: 'aberto',
-      plate: parsed.data.plate,
+      plate: parsed.data.plate || '',
+      prefix: parsed.data.prefix || '',
       departureOfficer: parsed.data.departureOfficer,
       deliveringOfficer: parsed.data.deliveringOfficer,
       garrisonCommander: parsed.data.garrisonCommander,
@@ -191,6 +278,7 @@ export async function completeReturnAction(id: string, formData: FormData) {
       return { error: parsedReturn.error.issues[0]?.message || 'Dados inválidos' }
     }
 
+    const photoLabel = (doc.prefix as string) || (doc.plate as string)
     const photoIds: Record<string, string> = {}
     for (const { key } of PHOTO_KEYS) {
       const file = formData.get(`return_photo_${key}`) as File | null
@@ -203,7 +291,7 @@ export async function completeReturnAction(id: string, formData: FormData) {
       try {
         checkBufferAvailable()
         const buffer = Buffer.from(await file.arrayBuffer())
-        const id = await uploadPhoto(buffer, `${doc.plate}_${key}_return.jpg`, file.type || 'image/jpeg')
+        const id = await uploadPhoto(buffer, `${photoLabel}_${key}_return.jpg`, file.type || 'image/jpeg')
         photoIds[key] = id
       } catch (uploadError) {
         console.error(`Erro no upload da foto "${key}":`, uploadError)
@@ -279,7 +367,16 @@ export async function getOpenHandoverByOfficer(matricula: string) {
       { sort: { createdAt: -1 } }
     )
     if (!doc) return { success: true, record: null }
-    return { success: true, record: { ...doc, _id: doc._id.toString(), plate: normalizePlate(doc.plate) } }
+    const resolved = await resolveVehicle(db, doc)
+    return {
+      success: true,
+      record: {
+        ...doc,
+        _id: doc._id.toString(),
+        plate: resolved.plate ? normalizePlate(resolved.plate) : normalizePlate((doc.plate as string) || ''),
+        prefix: resolved.prefix,
+      },
+    }
   } catch (error) {
     console.error('Erro ao buscar viatura em aberto:', error)
     return { error: 'Erro ao buscar viatura em aberto' }
@@ -295,6 +392,7 @@ export async function getHandoversAction(query = '', status: 'abertos' | 'fechad
     if (query) {
       filters.push({
         $or: [
+          { prefix: { $regex: query, $options: 'i' } },
           { plate: { $regex: query, $options: 'i' } },
           { 'departureOfficer.nome': { $regex: query, $options: 'i' } },
           { 'departureOfficer.matricula': { $regex: query, $options: 'i' } },
@@ -317,18 +415,24 @@ export async function getHandoversAction(query = '', status: 'abertos' | 'fechad
       .limit(200)
       .toArray()
 
+    const resolvedMap = await resolveVehicles(db, docs)
+
     return {
       success: true,
-      records: docs.map((d) => ({
+      records: docs.map((d) => {
+        const resolved = resolvedMap.get(d._id.toString())
+        return {
         _id: d._id.toString(),
-        plate: normalizePlate(d.plate),
+        plate: resolved?.plate ? normalizePlate(resolved.plate) : normalizePlate((d.plate as string) || ''),
+        prefix: resolved?.prefix || '',
         status: d.status,
         departureOfficer: d.departureOfficer,
         kilometers: d.kilometers,
         createdAt: d.createdAt,
         returnedAt: d.returnedAt,
         hasDepartureAlteration: Object.values(d.departureChecklist || {}).includes('alteracao'),
-      })),
+        }
+      }),
     }
   } catch (error) {
     console.error('Erro ao buscar registros:', error)
@@ -342,7 +446,16 @@ export async function getHandoverByIdAction(id: string) {
     const { db } = await connectToDatabase()
     const doc = await db.collection('handovers').findOne({ _id: new ObjectId(id) })
     if (!doc) return { error: 'Registro não encontrado' }
-    return { success: true, record: { ...doc, _id: doc._id.toString(), plate: normalizePlate(doc.plate) } }
+    const resolved = await resolveVehicle(db, doc)
+    return {
+      success: true,
+      record: {
+        ...doc,
+        _id: doc._id.toString(),
+        plate: resolved.plate ? normalizePlate(resolved.plate) : normalizePlate((doc.plate as string) || ''),
+        prefix: resolved.prefix,
+      },
+    }
   } catch (error) {
     console.error('Erro ao buscar registro:', error)
     return { error: 'Erro ao buscar registro' }

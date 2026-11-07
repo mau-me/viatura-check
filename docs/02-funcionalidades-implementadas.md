@@ -174,6 +174,7 @@ Vazio / 1/4 / 2/4 / 3/4 / Cheio.
 - Km final ≥ Km inicial
 - Fotos obrigatórias nas duas fases (5 + 5)
 - Admin pode fechar registros em aberto
+- `handovers` grava `prefix` (obrigatório) e `plate` (placa real da viatura); registros legados sem `prefix` são resolvidos em tempo de leitura via `vehicles` (comparação normalizada por prefixo ou placa) e podem ser corrigidos com `npm run db:backfill` (`scripts/backfill-handover-prefix.mjs`)
 
 ---
 
@@ -289,7 +290,7 @@ Vazio / 1/4 / 2/4 / 3/4 / Cheio.
 - Formulário em Dialog (desktop) / Drawer (mobile)
 - Busca por prefixo, placa ou modelo
 - Exclusão com confirmação (AlertDialog)
-- Prefixo no formato N.NNNN (ex.: 7.1301)
+- Prefixo no formato N.NNNN (ex.: 7.1301) e placa obrigatórios (ambos distintos)
 
 **Arquivos:**
 - `components/app/VehicleManagementClient.tsx` — orchestrador

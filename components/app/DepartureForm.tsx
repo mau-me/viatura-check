@@ -71,7 +71,8 @@ export function DepartureForm() {
       return
     }
     const formData = new FormData(e.currentTarget)
-    formData.set('plate', selectedVehicle.plate || selectedVehicle.prefix)
+    formData.set('prefix', selectedVehicle.prefix)
+    formData.set('plate', selectedVehicle.plate || '')
     for (const { key } of PHOTO_KEYS) {
       const f = photos[key].file
       if (f) formData.set(`photo_${key}`, f)

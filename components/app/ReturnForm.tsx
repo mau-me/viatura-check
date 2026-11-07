@@ -23,6 +23,7 @@ type PhotoState = Record<string, { file: File | null; preview: string | null }>
 interface RecordData {
   _id: string
   plate: string
+  prefix?: string
   status: string
   departureOfficer: { patente: string; nome: string; matricula: string }
   kilometers: { initial: number; final: number | null }
@@ -45,7 +46,7 @@ export function ReturnForm({ id }: { id: string }) {
         toast.error('Registro não encontrado')
         router.push('/')
       } else {
-        const r = res.record as RecordData
+        const r = res.record as unknown as RecordData
         if (r.status !== 'aberto') {
           toast.error('Este registro já foi finalizado')
           router.push('/')
@@ -132,7 +133,10 @@ export function ReturnForm({ id }: { id: string }) {
         <CardContent className="py-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-mono text-lg font-bold">{record.plate}</p>
+              <p className="font-mono text-lg font-bold">{record.prefix || record.plate}</p>
+              {record.prefix && record.plate && record.plate !== record.prefix && (
+                <p className="text-xs text-muted-foreground">{record.plate}</p>
+              )}
               <p className="text-sm text-muted-foreground">
                 Km inicial: {record.kilometers.initial}
               </p>

@@ -39,7 +39,8 @@ const officerMinimalSchema = z.object({
 })
 
 export const departureSchema = z.object({
-  plate: z.string().trim().min(3, 'Placa/prefixo obrigatório').max(15),
+  plate: z.string().trim().max(15).optional().or(z.literal('')),
+  prefix: z.string().trim().min(3, 'Prefixo obrigatório').max(15),
   departureOfficer: officerLoginSchema,
   deliveringOfficer: officerMinimalSchema,
   garrisonCommander: officerMinimalSchema,
@@ -110,7 +111,7 @@ const vehiclePrefixRegex = /^\d\.\d{4}$/
 
 export const vehicleSchema = z.object({
   prefix: z.string().trim().regex(vehiclePrefixRegex, 'Prefixo no formato N.NNNN (ex.: 7.1301)'),
-  plate: z.string().trim().max(15).toUpperCase().optional().or(z.literal('')),
+  plate: z.string().trim().min(3, 'Placa obrigatória').max(15).toUpperCase(),
   model: z.string().trim().max(100).optional().or(z.literal('')),
   year: z.coerce.number().int().min(1900, 'Ano inválido').max(new Date().getFullYear() + 1, 'Ano inválido').optional(),
 })
