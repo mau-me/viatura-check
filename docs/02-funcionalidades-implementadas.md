@@ -7,7 +7,7 @@
 
 ## Sumário
 
-1. [Dashboard do policial (`/`)](#1-dashboard-do-policial-)
+1. [Minhas Viaturas (`/`)](#1-minhas-viaturas-)
 2. [Carga de viatura (`/carga`)](#2-carga-de-viatura-carga)
 3. [Devolução de viatura (`/devolucao/[id]`)](#3-devolução-de-viatura-devolucãoid)
 4. [Captura de fotos](#4-captura-de-fotos)
@@ -24,20 +24,20 @@
 
 ---
 
-## 1. Dashboard do policial (`/`)
+## 1. Minhas Viaturas (`/`)
 
 **Status:** ✅ Implementado
 **Requisitos:** RF-01, RF-11
 **Acesso:** autenticado
 
-**O que faz:** a rota `/` exibe o dashboard do policial logado. Mostra:
+**O que faz:** a rota `/` exibe as viaturas do policial logado. Mostra:
 - Card com viatura em aberto (se houver) + botão "Devolver Viatura"
 - Botão "Nova Carga" (desabilitado se viatura em aberto)
 - Lista de registros anteriores do policial (histórico)
 
 **Arquivos:**
 - `app/page.tsx` — server wrapper com autenticação
-- `components/app/UserDashboardClient.tsx` — client component do dashboard
+- `components/app/UserDashboardClient.tsx` — client component da tela Minhas Viaturas
 
 **Regras de negócio:**
 - Um policial não pode ter mais de 1 viatura em aberto simultaneamente

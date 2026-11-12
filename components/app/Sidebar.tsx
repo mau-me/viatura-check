@@ -3,7 +3,7 @@
 import { useRouter, usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import {
-  LayoutDashboard,
+  Car,
   ClipboardList,
   Shield,
   ChevronRight,
@@ -22,7 +22,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
   const pathname = usePathname()
 
   const navigation = [
-    { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+    { name: 'Minhas Viaturas', href: '/', icon: Car },
     { name: 'Nova Carga', href: '/carga', icon: ClipboardList },
     ...(user.role === 'admin' ? [{ name: 'Administração', href: '/admin', icon: Shield }] : []),
   ]

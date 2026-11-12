@@ -121,7 +121,7 @@ export function ReturnForm({ id }: { id: string }) {
     <div className="mx-auto max-w-md space-y-4 p-4">
       <Button variant="outline" onClick={() => router.push('/')} className="mb-2">
         <ArrowLeft className="mr-2 h-4 w-4" />
-        Voltar ao Dashboard
+        Voltar para Minhas Viaturas
       </Button>
 
       <header className="text-center">

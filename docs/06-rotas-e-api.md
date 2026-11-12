@@ -7,7 +7,7 @@
 
 ## 1. Páginas (App Router)
 
-### 1.1 `/` — Dashboard do policial
+### 1.1 `/` — Minhas Viaturas
 
 - **Tipo:** Server Component → MainLayoutClient → UserDashboardClient (`app/page.tsx`)
 - **Acesso:** autenticado (qualquer usuário logado)

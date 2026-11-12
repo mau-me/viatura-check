@@ -2,10 +2,10 @@
 
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { LayoutDashboard, ClipboardList } from 'lucide-react'
+import { Car, ClipboardList } from 'lucide-react'
 
 const navigation = [
-  { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+  { name: 'Minhas Viaturas', href: '/', icon: Car },
   { name: 'Nova Carga', href: '/carga', icon: ClipboardList },
 ]
 

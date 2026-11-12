@@ -76,7 +76,7 @@ export function UserDashboardClient() {
   return (
     <div className="mx-auto max-w-md space-y-4 p-4">
       <header className="text-center">
-        <h1 className="text-2xl font-bold">Dashboard</h1>
+        <h1 className="text-2xl font-bold">Minhas Viaturas</h1>
         <p className="text-muted-foreground">Controle de viaturas</p>
       </header>
 

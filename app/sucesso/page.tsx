@@ -40,7 +40,7 @@ export default function SucessoPage({
       </Card>
       <div className="flex w-full flex-col gap-2">
         <Button render={<Link href="/" />} size="lg">
-          {isReturn ? "Voltar ao Dashboard" : "Ver Viatura em Aberto"}
+          {isReturn ? "Voltar para Minhas Viaturas" : "Ver Viatura em Aberto"}
         </Button>
       </div>
     </div>
