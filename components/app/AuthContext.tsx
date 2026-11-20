@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import type { Role } from '@/lib/roles'
 
 export interface AuthUser {
   id: string
@@ -8,7 +9,7 @@ export interface AuthUser {
   nome: string
   patente: string
   email?: string
-  role: 'admin' | 'user'
+  role: Role
   isActive: boolean
   primeiroAcesso: boolean
   resetRequested?: boolean

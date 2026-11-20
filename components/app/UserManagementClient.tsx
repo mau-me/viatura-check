@@ -25,6 +25,8 @@ import { UserTable, type UserRow } from './UserTable'
 import { UserCard } from './UserCard'
 import { UserForm } from './UserForm'
 import { useMediaQuery } from '@/hooks/use-media-query'
+import { useAuth } from './AuthContext'
+import { isRoot } from '@/lib/roles'
 
 interface UserManagementClientProps {
   initialUsers: UserRow[]
@@ -32,6 +34,8 @@ interface UserManagementClientProps {
 
 export function UserManagementClient({ initialUsers }: UserManagementClientProps) {
   const isDesktop = useMediaQuery('(min-width: 768px)')
+  const { user: currentUser } = useAuth()
+  const canManageRoot = isRoot(currentUser?.role)
   const [users, setUsers] = useState<UserRow[]>(initialUsers)
   const [query, setQuery] = useState('')
   const [formOpen, setFormOpen] = useState(false)
@@ -122,6 +126,7 @@ export function UserManagementClient({ initialUsers }: UserManagementClientProps
       ) : isDesktop ? (
         <UserTable
           users={users}
+          canManageRoot={canManageRoot}
           onEdit={handleEdit}
           onReset={handleReset}
           onDelete={(u) => setDeletingUser(u)}
@@ -132,6 +137,7 @@ export function UserManagementClient({ initialUsers }: UserManagementClientProps
             <UserCard
               key={u._id}
               user={u}
+              canManageRoot={canManageRoot}
               onEdit={handleEdit}
               onReset={handleReset}
               onDelete={(user) => setDeletingUser(user)}

@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from './AuthContext'
 import { Header } from './Header'
 import { Sidebar } from './Sidebar'
 import { BottomNav } from './BottomNav'
+import type { Role } from '@/lib/roles'
 
 interface AdminLayoutClientProps {
   user: {
@@ -13,7 +14,7 @@ interface AdminLayoutClientProps {
     nome: string
     patente: string
     email?: string
-    role: 'admin' | 'user'
+    role: Role
     isActive: boolean
     primeiroAcesso: boolean
     resetRequested?: boolean

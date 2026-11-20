@@ -11,6 +11,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Pencil, KeyRound, Trash2 } from 'lucide-react'
+import { ROLE_LABELS, isRoot, type Role } from '@/lib/roles'
 
 export interface UserRow {
   _id: string
@@ -18,7 +19,7 @@ export interface UserRow {
   nome: string
   patente: string
   email?: string
-  role: 'admin' | 'user'
+  role: Role
   isActive: boolean
   primeiroAcesso: boolean
   resetRequested: boolean
@@ -26,12 +27,13 @@ export interface UserRow {
 
 interface UserTableProps {
   users: UserRow[]
+  canManageRoot: boolean
   onEdit: (user: UserRow) => void
   onReset: (user: UserRow) => void
   onDelete: (user: UserRow) => void
 }
 
-export function UserTable({ users, onEdit, onReset, onDelete }: UserTableProps) {
+export function UserTable({ users, canManageRoot, onEdit, onReset, onDelete }: UserTableProps) {
   return (
     <div className="rounded-lg border">
       <Table>
@@ -52,8 +54,8 @@ export function UserTable({ users, onEdit, onReset, onDelete }: UserTableProps) 
               <TableCell>{user.nome}</TableCell>
               <TableCell>{user.patente}</TableCell>
               <TableCell>
-                <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
-                  {user.role === 'admin' ? 'Admin' : 'Usuário'}
+                <Badge variant={user.role === 'user' ? 'secondary' : 'default'}>
+                  {ROLE_LABELS[user.role]}
                 </Badge>
               </TableCell>
               <TableCell>
@@ -75,10 +77,22 @@ export function UserTable({ users, onEdit, onReset, onDelete }: UserTableProps) 
               </TableCell>
               <TableCell className="text-right">
                 <div className="flex justify-end gap-1">
-                  <Button variant="ghost" size="sm" onClick={() => onEdit(user)} aria-label="Editar">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onEdit(user)}
+                    aria-label="Editar"
+                    disabled={isRoot(user.role) && !canManageRoot}
+                  >
                     <Pencil className="size-4" />
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => onReset(user)} aria-label="Redefinir senha">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onReset(user)}
+                    aria-label="Redefinir senha"
+                    disabled={isRoot(user.role) && !canManageRoot}
+                  >
                     <KeyRound className="size-4" />
                   </Button>
                   <Button
@@ -86,7 +100,7 @@ export function UserTable({ users, onEdit, onReset, onDelete }: UserTableProps) 
                     size="sm"
                     onClick={() => onDelete(user)}
                     aria-label="Excluir"
-                    disabled={user.role === 'admin' && !user.isActive}
+                    disabled={(user.role === 'admin' && !user.isActive) || (isRoot(user.role) && !canManageRoot)}
                   >
                     <Trash2 className="size-4 text-destructive" />
                   </Button>

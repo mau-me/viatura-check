@@ -5,6 +5,7 @@ import { useTheme } from 'next-themes'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { useAuth } from './AuthContext'
+import type { Role } from '@/lib/roles'
 
 interface HeaderProps {
   user: {
@@ -13,7 +14,7 @@ interface HeaderProps {
     nome: string
     patente: string
     email?: string
-    role: 'admin' | 'user'
+    role: Role
     isActive: boolean
     primeiroAcesso: boolean
     resetRequested?: boolean

@@ -93,7 +93,7 @@ export const createUserSchema = z.object({
   nome: z.string().trim().min(1, 'Nome obrigatório').max(120),
   patente: z.enum(PATENTE_OPTIONS, 'Patente obrigatória'),
   email: z.string().email('Email inválido').optional().or(z.literal('')),
-  role: z.enum(['admin', 'user']),
+  role: z.enum(['root', 'admin', 'user']),
   isActive: z.boolean().default(true),
 })
 

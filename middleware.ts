@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { jwtVerify } from 'jose'
+import { isStaff, type Role } from '@/lib/roles'
 
 const JWT_SECRET = process.env.JWT_SECRET
 if (!JWT_SECRET) {
@@ -13,7 +14,7 @@ interface JWTPayload {
   sub: string
   matricula: string
   nome: string
-  role: 'admin' | 'user'
+  role: Role
   purpose?: 'auth' | 'setup'
 }
 
@@ -54,7 +55,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl)
   }
 
-  if (pathname.startsWith('/admin') && session.role !== 'admin') {
+  if (pathname.startsWith('/admin') && !isStaff(session.role)) {
     return NextResponse.redirect(new URL('/', request.url))
   }
 

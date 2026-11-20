@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/jwt'
 import { findUserById } from '@/lib/auth'
+import { isStaff } from '@/lib/roles'
 import { AdminLayoutClient } from '@/components/app/AdminLayoutClient'
 
 export default async function AdminLayout({
@@ -16,7 +17,7 @@ export default async function AdminLayout({
 
   const user = await findUserById(session.sub)
 
-  if (!user || !user.isActive || user.role !== 'admin') {
+  if (!user || !user.isActive || !isStaff(user.role)) {
     redirect('/')
   }
 

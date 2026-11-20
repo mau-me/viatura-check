@@ -27,6 +27,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { PATENTE_OPTIONS } from '@/lib/validation'
+import { isRoot, type Role } from '@/lib/roles'
+import { useAuth } from './AuthContext'
 
 export interface UserFormData {
   _id?: string
@@ -34,7 +36,7 @@ export interface UserFormData {
   nome: string
   patente: string
   email?: string
-  role: 'admin' | 'user'
+  role: Role
   isActive: boolean
 }
 
@@ -49,13 +51,15 @@ export function UserForm({ open, onOpenChange, user, onSuccess }: UserFormProps)
   const isDesktop = useMediaQuery('(min-width: 768px)')
   const [pending, startTransition] = useTransition()
   const isEdit = !!user
+  const { user: currentUser } = useAuth()
+  const canAssignRoot = isRoot(currentUser?.role)
 
   const [form, setForm] = useState({
     matricula: '',
     nome: '',
     patente: '',
     email: '',
-    role: 'user' as 'admin' | 'user',
+    role: 'user' as Role,
     isActive: true,
   })
 
@@ -152,7 +156,7 @@ export function UserForm({ open, onOpenChange, user, onSuccess }: UserFormProps)
         <Label htmlFor="role">Função</Label>
         <Select
           value={form.role}
-          onValueChange={(v) => setForm({ ...form, role: v as 'admin' | 'user' })}
+          onValueChange={(v) => setForm({ ...form, role: v as Role })}
         >
           <SelectTrigger className="w-full">
             <SelectValue placeholder="Selecione a função" />
@@ -160,6 +164,7 @@ export function UserForm({ open, onOpenChange, user, onSuccess }: UserFormProps)
           <SelectContent>
             <SelectItem value="user">Usuário</SelectItem>
             <SelectItem value="admin">Administrador</SelectItem>
+            {canAssignRoot && <SelectItem value="root">Root</SelectItem>}
           </SelectContent>
         </Select>
       </div>

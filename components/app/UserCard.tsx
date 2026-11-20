@@ -3,16 +3,19 @@
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Pencil, KeyRound, Trash2 } from 'lucide-react'
+import { ROLE_LABELS, isRoot } from '@/lib/roles'
 import type { UserRow } from './UserTable'
 
 interface UserCardProps {
   user: UserRow
+  canManageRoot: boolean
   onEdit: (user: UserRow) => void
   onReset: (user: UserRow) => void
   onDelete: (user: UserRow) => void
 }
 
-export function UserCard({ user, onEdit, onReset, onDelete }: UserCardProps) {
+export function UserCard({ user, canManageRoot, onEdit, onReset, onDelete }: UserCardProps) {
+  const locked = isRoot(user.role) && !canManageRoot
   return (
     <div className="rounded-lg border p-4 space-y-2">
       <div className="flex items-start justify-between">
@@ -23,8 +26,8 @@ export function UserCard({ user, onEdit, onReset, onDelete }: UserCardProps) {
           </p>
           {user.email && <p className="text-xs text-muted-foreground">{user.email}</p>}
         </div>
-        <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
-          {user.role === 'admin' ? 'Admin' : 'Usuário'}
+        <Badge variant={user.role === 'user' ? 'secondary' : 'default'}>
+          {ROLE_LABELS[user.role]}
         </Badge>
       </div>
       <div className="flex flex-wrap gap-1">
@@ -43,17 +46,17 @@ export function UserCard({ user, onEdit, onReset, onDelete }: UserCardProps) {
         )}
       </div>
       <div className="flex gap-2 pt-1">
-        <Button variant="outline" size="sm" className="flex-1" onClick={() => onEdit(user)}>
+        <Button variant="outline" size="sm" className="flex-1" onClick={() => onEdit(user)} disabled={locked}>
           <Pencil className="size-4" /> Editar
         </Button>
-        <Button variant="outline" size="sm" className="flex-1" onClick={() => onReset(user)}>
+        <Button variant="outline" size="sm" className="flex-1" onClick={() => onReset(user)} disabled={locked}>
           <KeyRound className="size-4" /> Reset
         </Button>
         <Button
           variant="outline"
           size="sm"
           onClick={() => onDelete(user)}
-          disabled={user.role === 'admin' && !user.isActive}
+          disabled={(user.role === 'admin' && !user.isActive) || locked}
         >
           <Trash2 className="size-4 text-destructive" />
         </Button>

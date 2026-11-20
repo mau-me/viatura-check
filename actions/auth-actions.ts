@@ -23,7 +23,24 @@ import {
   listUsers,
   changePassword,
   requireAdmin,
+  findUserById,
 } from '@/lib/auth'
+import { isRoot } from '@/lib/roles'
+
+const ROOT_ONLY_ERROR = 'Apenas root pode gerenciar usuários root'
+
+async function assertCanManage(targetId: string | null, newRole?: unknown) {
+  const session = await requireAdmin()
+  const actor = await findUserById(session.sub)
+  if (!actor || !actor.isActive) throw new Error('Acesso negado')
+  if (isRoot(actor.role)) return session
+  if (newRole === 'root') throw new Error(ROOT_ONLY_ERROR)
+  if (targetId) {
+    const target = await findUserById(targetId)
+    if (target && isRoot(target.role)) throw new Error(ROOT_ONLY_ERROR)
+  }
+  return session
+}
 
 export async function loginAction(_prev: unknown, formData: FormData) {
   try {
@@ -133,7 +150,7 @@ export async function logoutAction() {
 
 export async function createUserAction(formData: FormData) {
   try {
-    await requireAdmin()
+    await assertCanManage(null, formData.get('role'))
 
     const raw = {
       matricula: formData.get('matricula'),
@@ -165,10 +182,10 @@ export async function createUserAction(formData: FormData) {
 
 export async function updateUserAction(formData: FormData) {
   try {
-    await requireAdmin()
-
     const id = formData.get('id') as string
     if (!id) return { error: 'ID obrigatório' }
+
+    await assertCanManage(id, formData.get('role'))
 
     const raw = {
       nome: formData.get('nome'),
@@ -196,12 +213,10 @@ export async function updateUserAction(formData: FormData) {
 
 export async function deleteUserAction(formData: FormData) {
   try {
-    await requireAdmin()
-
     const id = formData.get('id') as string
     if (!id) return { error: 'ID obrigatório' }
 
-    const session = await requireAdmin()
+    const session = await assertCanManage(id)
     if (session.sub === id) {
       return { error: 'Não é possível excluir a si mesmo' }
     }
@@ -285,12 +300,10 @@ export async function requestPasswordResetAction(_prev: unknown, formData: FormD
 
 export async function adminClearUserPasswordAction(formData: FormData) {
   try {
-    await requireAdmin()
-
     const id = formData.get('id') as string
     if (!id) return { error: 'ID do usuário é obrigatório.' }
 
-    const session = await requireAdmin()
+    const session = await assertCanManage(id)
     if (session.sub === id) {
       return { error: 'Não é possível limpar a própria senha.' }
     }

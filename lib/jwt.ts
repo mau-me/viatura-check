@@ -1,5 +1,6 @@
 import { SignJWT, jwtVerify } from 'jose'
 import { cookies } from 'next/headers'
+import { isStaff, type Role } from '@/lib/roles'
 
 const JWT_SECRET = process.env.JWT_SECRET
 if (!JWT_SECRET) {
@@ -13,7 +14,7 @@ export interface JWTPayload {
   sub: string
   matricula: string
   nome: string
-  role: 'admin' | 'user'
+  role: Role
   purpose?: 'auth' | 'setup'
 }
 
@@ -51,7 +52,7 @@ export async function requireAuth(): Promise<JWTPayload> {
 
 export async function requireAdmin(): Promise<JWTPayload> {
   const session = await requireAuth()
-  if (session.role !== 'admin') {
+  if (!isStaff(session.role)) {
     throw new Error('Acesso negado: apenas administradores')
   }
   return session

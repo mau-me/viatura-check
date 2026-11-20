@@ -3,6 +3,7 @@ import { ObjectId } from 'mongodb'
 import { connectToDatabase } from '@/lib/mongodb'
 import { signToken, verifyToken, getSession, requireAuth, requireAdmin, TOKEN_EXPIRY, SETUP_TOKEN_EXPIRY, type JWTPayload } from '@/lib/jwt'
 import { cookies } from 'next/headers'
+import type { Role } from '@/lib/roles'
 
 const BCRYPT_COST = 12
 const SESSION_COOKIE = 'viatura_session'
@@ -40,7 +41,7 @@ export interface UserDoc {
   nome: string
   patente: string
   email?: string
-  role: 'admin' | 'user'
+  role: Role
   passwordHash: string | null
   isActive: boolean
   primeiroAcesso: boolean
@@ -57,7 +58,7 @@ export interface UserPublic {
   nome: string
   patente: string
   email?: string
-  role: 'admin' | 'user'
+  role: Role
   isActive: boolean
   primeiroAcesso: boolean
   resetRequested: boolean
@@ -92,12 +93,22 @@ export async function findUserById(id: string): Promise<UserDoc | null> {
   return db.collection<UserDoc>('users').findOne({ _id: new ObjectId(id) })
 }
 
+export async function requireRoot(): Promise<JWTPayload> {
+  const session = await getSession()
+  if (!session) throw new Error('Não autenticado')
+  const user = await findUserById(session.sub)
+  if (!user || !user.isActive || user.role !== 'root') {
+    throw new Error('Acesso negado: apenas root')
+  }
+  return session
+}
+
 export async function createUser(data: {
   matricula: string
   nome: string
   patente: string
   email?: string
-  role: 'admin' | 'user'
+  role: Role
   isActive?: boolean
 }): Promise<UserPublic> {
   const { db } = await connectToDatabase()

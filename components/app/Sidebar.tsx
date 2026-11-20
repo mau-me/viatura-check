@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { AuthUser } from './AuthContext'
+import { isStaff } from '@/lib/roles'
 
 interface SidebarProps {
   user: AuthUser
@@ -24,7 +25,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
   const navigation = [
     { name: 'Minhas Viaturas', href: '/', icon: Car },
     { name: 'Nova Carga', href: '/carga', icon: ClipboardList },
-    ...(user.role === 'admin' ? [{ name: 'Administração', href: '/admin', icon: Shield }] : []),
+    ...(isStaff(user.role) ? [{ name: 'Administração', href: '/admin', icon: Shield }] : []),
   ]
 
   return (
