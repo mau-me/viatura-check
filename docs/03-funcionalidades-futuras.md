@@ -280,6 +280,27 @@ Neutral padrão do shadcn).
 **Descrição:** consulta de placa → marca/modelo para enriquecer o registro (como no projeto de
 referência).
 
+### 5.10 Retenção automática de fotos
+
+**Status:** 🔮 Futuro
+**Prioridade:** P2
+
+**Descrição:** hoje a limpeza é manual em `/admin` (aba Armazenamento). Automatizar via cron/Atlas
+Trigger: gerar ZIP, armazenar fora do banco e remover fotos de registros fechados após N dias.
+
+**Impacto técnico:**
+- Função agendada reutilizando `actions/storage-actions.ts` e `lib/storage.ts`
+- Destino do ZIP (S3/R2 ou disco) antes de permitir o purge
+- Registro de execução em `photo_cleanup_logs`
+
+### 5.11 Backup externo das fotos
+
+**Status:** 🔮 Futuro
+**Prioridade:** P2
+
+**Descrição:** os ZIPs baixados manualmente não ficam no servidor. Criar backup automático
+(offsite) das fotos antes da retenção, para manter o histórico fora do limite de 512 MB do Atlas.
+
 ---
 
 ## Como priorizar

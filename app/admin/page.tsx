@@ -1,11 +1,14 @@
 import { requireAdmin } from '@/lib/jwt'
-import { listUsers } from '@/lib/auth'
+import { findUserById, listUsers } from '@/lib/auth'
+import { isRoot } from '@/lib/roles'
 import { listVehiclesAction } from '@/actions/vehicle-actions'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { FileText, Users2, Car } from 'lucide-react'
+import { FileText, Users2, Car, HardDrive } from 'lucide-react'
 import { AdminRecordsClient } from '@/components/app/AdminRecordsClient'
 import { UserManagementClient } from '@/components/app/UserManagementClient'
 import { VehicleManagementClient } from '@/components/app/VehicleManagementClient'
+import { StorageDashboardClient } from '@/components/app/StorageDashboardClient'
+import { MAX_PURGE_RECORDS } from '@/lib/storage'
 import type { UserRow } from '@/components/app/UserTable'
 import type { VehicleRow } from '@/components/app/VehicleTable'
 
@@ -14,13 +17,17 @@ export default async function AdminPage({
 }: {
   searchParams: { tab?: string }
 }) {
-  await requireAdmin()
+  const session = await requireAdmin()
+  const currentUser = await findUserById(session.sub)
+  const root = isRoot(currentUser?.role)
 
   const defaultTab = searchParams?.tab === 'usuarios'
     ? 'usuarios'
     : searchParams?.tab === 'viaturas'
       ? 'viaturas'
-      : 'registros'
+      : searchParams?.tab === 'armazenamento' && root
+        ? 'armazenamento'
+        : 'registros'
 
   const { users } = await listUsers('', 1, 100)
   const initialUsers: UserRow[] = users.map((u) => ({
@@ -42,11 +49,15 @@ export default async function AdminPage({
     <div className="mx-auto max-w-4xl space-y-6 p-4">
       <header>
         <h1 className="text-2xl font-bold">Administração</h1>
-        <p className="text-sm text-muted-foreground">Gerencie registros, usuários e viaturas do sistema</p>
+        <p className="text-sm text-muted-foreground">
+          {root
+            ? 'Gerencie registros, usuários, viaturas e armazenamento do sistema'
+            : 'Gerencie registros, usuários e viaturas do sistema'}
+        </p>
       </header>
 
       <Tabs defaultValue={defaultTab}>
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className={root ? 'grid w-full grid-cols-2 sm:grid-cols-4' : 'grid w-full grid-cols-3'}>
           <TabsTrigger value="registros">
             <FileText className="size-4" /> Registros
           </TabsTrigger>
@@ -56,6 +67,11 @@ export default async function AdminPage({
           <TabsTrigger value="viaturas">
             <Car className="size-4" /> Viaturas
           </TabsTrigger>
+          {root && (
+            <TabsTrigger value="armazenamento">
+              <HardDrive className="size-4" /> Armazenamento
+            </TabsTrigger>
+          )}
         </TabsList>
         <TabsContent value="registros" className="mt-4">
           <AdminRecordsClient />
@@ -66,6 +82,11 @@ export default async function AdminPage({
         <TabsContent value="viaturas" className="mt-4">
           <VehicleManagementClient initialVehicles={initialVehicles} />
         </TabsContent>
+        {root && (
+          <TabsContent value="armazenamento" className="mt-4">
+            <StorageDashboardClient maxSelection={MAX_PURGE_RECORDS} />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   )

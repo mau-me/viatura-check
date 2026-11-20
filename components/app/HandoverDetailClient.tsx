@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Loader2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ArrowRight, Lock, CheckCircle2, ArrowLeft } from 'lucide-react'
+import { ArrowRight, Lock, CheckCircle2, ArrowLeft, ImageOff } from 'lucide-react'
 
 const STATUS_LABELS: Record<string, string> = {
   vazio: 'Vazio',
@@ -18,6 +18,27 @@ const STATUS_LABELS: Record<string, string> = {
   cartao: 'Cartão',
   talao: 'Talão',
   nao_encontrado: 'Não Encontrado',
+}
+
+type PurgedPhase = {
+  at: string | Date
+  by: string
+  count: number
+  bytes: number
+}
+
+function formatBytes(bytes: number): string {
+  if (!bytes || bytes < 0) return '0 B'
+  const units = ['B', 'KB', 'MB', 'GB']
+  const index = Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)))
+  return `${(bytes / Math.pow(1024, index)).toFixed(index === 0 ? 0 : 1)} ${units[index]}`
+}
+
+function formatDate(value: string | Date | null | undefined): string {
+  if (!value) return '—'
+  const date = new Date(value)
+  if (isNaN(date.getTime())) return '—'
+  return format(date, 'dd/MM/yyyy', { locale: ptBR })
 }
 
 type RecordData = {
@@ -37,6 +58,12 @@ type RecordData = {
   departureObservations?: string
   departurePhotos?: Record<string, string>
   returnPhotos?: Record<string, string>
+  photosPurged?: { departure?: PurgedPhase; return?: PurgedPhase }
+  photosBackup?: { at: string | Date; by: string }
+  photoStats?: {
+    departure?: { count: number; bytes: number }
+    return?: { count: number; bytes: number }
+  }
   returnObservations?: string
   createdAt: Date
   returnedAt?: Date
@@ -148,17 +175,36 @@ export function HandoverDetailClient({ id }: { id: string }) {
           <CardTitle>Fotos (Carga)</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {PHOTO_KEYS.map((p) => {
-            const pid = record.departurePhotos?.[p.key]
-            if (!pid) return null
-            return (
-              <div key={p.key} className="space-y-1">
-                <p className="text-sm font-medium">{p.label}</p>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={`/api/photos/${pid}`} alt={p.label} className="w-full rounded-lg border object-contain" loading="lazy" />
+          {record.photosPurged?.departure ? (
+            <div className="flex items-start gap-2 rounded-lg border p-3 text-sm sm:col-span-2">
+              <ImageOff className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+              <div>
+                <p>
+                  Fotos removidas do armazenamento em{' '}
+                  {formatDate(record.photosPurged.departure.at)}.
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {record.photosPurged.departure.count} foto(s) ·{' '}
+                  {formatBytes(record.photosPurged.departure.bytes)}
+                  {record.photosBackup?.at
+                    ? ` · backup em ${formatDate(record.photosBackup.at)}`
+                    : ''}
+                </p>
               </div>
-            )
-          })}
+            </div>
+          ) : (
+            PHOTO_KEYS.map((p) => {
+              const pid = record.departurePhotos?.[p.key]
+              if (!pid) return null
+              return (
+                <div key={p.key} className="space-y-1">
+                  <p className="text-sm font-medium">{p.label}</p>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={`/api/photos/${pid}`} alt={p.label} className="w-full rounded-lg border object-contain" loading="lazy" />
+                </div>
+              )
+            })
+          )}
         </CardContent>
       </Card>
 
@@ -185,17 +231,36 @@ export function HandoverDetailClient({ id }: { id: string }) {
               <CardTitle>Fotos (Devolução)</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {PHOTO_KEYS.map((p) => {
-                const pid = record.returnPhotos?.[p.key]
-                if (!pid) return null
-                return (
-                  <div key={p.key} className="space-y-1">
-                    <p className="text-sm font-medium">{p.label}</p>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={`/api/photos/${pid}`} alt={p.label} className="w-full rounded-lg border object-contain" loading="lazy" />
+              {record.photosPurged?.return ? (
+                <div className="flex items-start gap-2 rounded-lg border p-3 text-sm sm:col-span-2">
+                  <ImageOff className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                  <div>
+                    <p>
+                      Fotos removidas do armazenamento em{' '}
+                      {formatDate(record.photosPurged.return.at)}.
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {record.photosPurged.return.count} foto(s) ·{' '}
+                      {formatBytes(record.photosPurged.return.bytes)}
+                      {record.photosBackup?.at
+                        ? ` · backup em ${formatDate(record.photosBackup.at)}`
+                        : ''}
+                    </p>
                   </div>
-                )
-              })}
+                </div>
+              ) : (
+                PHOTO_KEYS.map((p) => {
+                  const pid = record.returnPhotos?.[p.key]
+                  if (!pid) return null
+                  return (
+                    <div key={p.key} className="space-y-1">
+                      <p className="text-sm font-medium">{p.label}</p>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={`/api/photos/${pid}`} alt={p.label} className="w-full rounded-lg border object-contain" loading="lazy" />
+                    </div>
+                  )
+                })
+              )}
             </CardContent>
           </Card>
         </>

@@ -21,6 +21,7 @@
 12. [Gerenciamento de viaturas](#12-gerenciamento-de-viaturas)
 13. [Servir fotos via API (`/api/photos/[id]`)](#13-servir-fotos-via-api-apiphotosid)
 14. [PWA e tema](#14-pwa-e-tema)
+15. [Monitoramento de armazenamento e limpeza de fotos](#15-monitoramento-de-armazenamento-e-limpeza-de-fotos)
 
 ---
 
@@ -225,12 +226,13 @@ Vazio / 1/4 / 2/4 / 3/4 / Cheio. Itens do tipo **opção** usam Cartão / Talão
 
 **Status:** ✅ Implementado
 **Requisitos:** RF-10, RNF-01, RNF-07
-**Acesso:** admin apenas
+**Acesso:** admin e root
 
-**O que faz:** três tabs:
+**O que faz:** três tabs para admin e quatro para root:
 - **Registros:** lista com filtro (Todos / Em Aberto / Fechados), busca, exclusão, fechamento
 - **Usuários:** CRUD de usuários
 - **Viaturas:** CRUD de viaturas (prefixo, placa, modelo, ano)
+- **Armazenamento (somente root):** uso do banco, download de fotos em ZIP e limpeza de fotos antigas
 
 **Arquivos:**
 - `app/admin/page.tsx` — server page com tabs
@@ -239,6 +241,7 @@ Vazio / 1/4 / 2/4 / 3/4 / Cheio. Itens do tipo **opção** usam Cartão / Talão
 - `components/app/AdminRecordsClient.tsx` — listagem de registros
 - `components/app/UserManagementClient.tsx` — gerenciamento de usuários
 - `components/app/VehicleManagementClient.tsx` — gerenciamento de viaturas
+- `components/app/StorageDashboardClient.tsx` — monitoramento e limpeza de fotos
 
 ---
 
@@ -246,11 +249,14 @@ Vazio / 1/4 / 2/4 / 3/4 / Cheio. Itens do tipo **opção** usam Cartão / Talão
 
 **Status:** ✅ Implementado
 **Requisitos:** RF-10, RNF-07
-**Acesso:** admin apenas
+**Acesso:** admin e root
 
 **O que faz:** exibe o registro completo com duas seções:
 - **Carga (Saída):** policial, quem entregou, km inicial, checklist, fotos, observações
 - **Devolução (Entrada):** policial que recebeu, km final, fotos, observações
+
+Quando as fotos de uma fase foram removidas do GridFS pela limpeza de armazenamento, a seção exibe
+um aviso com a data da remoção em vez das imagens.
 
 **Arquivos:**
 - `app/admin/[id]/page.tsx` — server wrapper com role guard
@@ -262,7 +268,7 @@ Vazio / 1/4 / 2/4 / 3/4 / Cheio. Itens do tipo **opção** usam Cartão / Talão
 
 **Status:** ✅ Implementado
 **Requisitos:** RF-11
-**Acesso:** admin apenas
+**Acesso:** admin e root
 
 **O que faz:** CRUD completo de usuários com:
 - Tabela (desktop) e cards (mobile) — responsivo
@@ -270,6 +276,14 @@ Vazio / 1/4 / 2/4 / 3/4 / Cheio. Itens do tipo **opção** usam Cartão / Talão
 - Busca por nome, matrícula ou patente
 - Exclusão com confirmação (AlertDialog)
 - Toggle de status ativo/inativo
+- Papéis `user`, `admin` e `root`
+
+**Regras de negócio:**
+- `root` tem todas as permissões de `admin` e é o único com acesso à aba Armazenamento
+- Admin vê usuários root na lista, mas editar, redefinir senha e excluir ficam desabilitados
+- Só root pode atribuir o papel `root` ou alterar/excluir um root; a regra é validada também nas
+  Server Actions (`actions/auth-actions.ts`), não só na UI
+- O primeiro root é promovido direto no banco (ver `docs/07-guia-de-desenvolvimento.md`)
 
 **Arquivos:**
 - `components/app/UserManagementClient.tsx` — orchestrador
@@ -330,6 +344,47 @@ via `next-themes` (padrão: sistema).
 - `public/manifest.json` — manifesto PWA
 - `public/icon-192.png`, `public/icon-512.png` — ícones
 - `app/layout.tsx` — `<ThemeProvider>`, `<Toaster />`, metas PWA
+
+---
+
+## 15. Monitoramento de armazenamento e limpeza de fotos
+
+**Status:** ✅ Implementado
+**Requisitos:** RNF-01, RNF-04
+**Acesso:** root apenas
+
+**O que faz:** quarta aba do `/admin` ("Armazenamento") que acompanha o uso do banco (limite gratuito
+do Atlas de 512 MB) e permite liberar espaço apagando apenas as fotos de registros fechados, com
+download prévio em ZIP.
+- Cards com tamanho das fotos, dados + índices, disco (`storageSize`) e quantidade de registros
+- Barra de uso com alerta acima de 80% (atenção) e 90% (crítico)
+- Estimativa de registros restantes e tamanho médio por registro
+- Seleção de até 25 registros fechados (busca, seleção em massa e total selecionado)
+- Download das fotos em ZIP (`carga/`, `devolucao/` e `registro.json` por registro)
+- Registros sem backup recente ficam bloqueados para limpeza; o backup vale por 24h
+- Limpeza mantém o documento e os IDs das fotos, remove apenas os arquivos do GridFS e grava
+  `photosPurged` por fase
+- Limpeza de fotos órfãs (sem referência há mais de 1h, bloqueada se não houver registros)
+- Histórico das operações na coleção `photo_cleanup_logs`
+
+**Arquivos:**
+- `components/app/StorageDashboardClient.tsx` — UI da aba
+- `actions/storage-actions.ts` — Server Actions de estatísticas, candidatos, exportação e limpeza
+- `app/api/admin/photos/export/route.ts` — gera o ZIP das fotos selecionadas
+- `lib/storage.ts` — constantes de limite, TTL de backup, limites de seleção e idade de órfãos
+- `lib/gridfs.ts` — `getPhotosMeta`, `openPhotoStream`, `deletePhotos`
+- `scripts/backfill-photo-stats.mjs` — preenche `photoStats` em registros antigos
+  (`npm run db:photo-stats`)
+
+**Regras de negócio:**
+- Só registros com status `fechado` podem ter as fotos removidas
+- Toda remoção exige `photosBackup` dentro do TTL configurado
+- `/api/photos/[id]` retorna 404 para fotos removidas; o detalhe mostra o aviso de remoção
+- Órfãos só são apagados se já existir pelo menos um registro e o upload tiver mais de 1h
+- Aba, Server Actions e rota de exportação exigem `requireRoot()` (papel conferido no banco); admin
+  não vê a aba e recebe 403 na exportação
+- `photosBackup` é gravado quando o servidor termina de gerar o ZIP, mesmo que o download seja
+  cancelado no navegador; por isso a UI pede a confirmação de que o arquivo foi salvo
 
 ---
 

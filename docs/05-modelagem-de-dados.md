@@ -109,6 +109,20 @@ Estrutura do documento com fluxo de duas fases (carga + devolução):
   returnObservations: "..." | null,
   returnedAt: ISODate(...) | null,  // data da devolução
 
+  // --- ARMAZENAMENTO ---
+  photoStats: {                     // tamanho das fotos por fase (gravado no upload)
+    departure: { count: 5, bytes: 1241762 },
+    return: { count: 5, bytes: 1299581 }   // ausente até a devolução
+  },
+  photosBackup: {                   // último backup (ZIP) daquele registro
+    at: ISODate(...),
+    by: "123456"                    // matrícula do admin
+  } | null,
+  photosPurged: {                   // fotos removidas do GridFS (documento preservado)
+    departure?: { at: ISODate(...), by: "123456", count: 5, bytes: 1241762 },
+    return?:    { at: ISODate(...), by: "123456", count: 5, bytes: 1299581 }
+  },
+
   // --- METADADOS ---
   createdAt: ISODate(...),
   updatedAt: ISODate(...)
@@ -124,7 +138,15 @@ Estrutura do documento com fluxo de duas fases (carga + devolução):
 5. **Fotos obrigatórias nas duas fases**: 5 fotos na carga, 5 fotos na devolução.
 6. **Admin pode fechar registros**: o admin pode fechar registros em aberto (sem dados de devolução).
 7. **Registro é imutável após fechamento** (sem edição).
-8. **Exclusão remove fotos do GridFS e depois o documento**.
+8. **Exclusão remove fotos do GridFS e depois o documento** (`deleteHandoverAction`, admin).
+9. **Limpeza de fotos preserva o documento**: só remove os arquivos do GridFS e grava
+   `photosPurged` por fase; os IDs em `departurePhotos`/`returnPhotos` permanecem.
+10. **Limpeza só em registros fechados e com backup recente**: exige `photosBackup` dentro de
+    `PHOTO_BACKUP_TTL_HOURS` (padrão 24h); registros em aberto nunca são limpos.
+11. **Fotos órfãs** (sem referência em `handovers`, com `uploadDate` há mais de 1h) podem ser
+    removidas, mas a operação é bloqueada se não existir nenhum registro (proteção contra erro de
+    leitura).
+12. **Auditoria**: cada limpeza grava um documento em `photo_cleanup_logs`.
 
 ### Mudanças do modelo anterior
 
@@ -167,6 +189,17 @@ Gerenciado pelo driver (`lib/gridfs.ts`). Gera as coleções:
 - Devolução: 5 fotos × ~250KB ≈ 1,25MB
 - Total por registro completo: ~2,5MB
 
+### Limpeza de fotos
+
+O documento do `handovers` nunca é apagado nesse fluxo. A limpeza (`purgeHandoverPhotosAction`)
+remove apenas os arquivos de `photos.files`/`photos.chunks`, mantém os IDs e registra `photosPurged`.
+O detalhe (`/admin/[id]`) passa a mostrar o aviso de fotos removidas, e `/api/photos/[id]` retorna
+404 para esses IDs.
+
+- Candidatos: registros `fechado` com fotos ainda presentes e sem `photosPurged` na fase
+- Backup: o ZIP gerado por `/api/admin/photos/export` grava `photosBackup` no documento
+- Fotos órfãs: arquivos sem referência há mais de `ORPHAN_MIN_AGE_MS` (1h)
+
 ## 5. Índices recomendados
 
 ```js
@@ -190,7 +223,7 @@ db.vehicles.createIndex({ plate: 1 })
   nome: "João da Silva",
   patente: "Sd",
   email: "email@exemplo.com",
-  role: "admin" | "user",
+  role: "root" | "admin" | "user",
   passwordHash: "<hash bcrypt>",   // bcryptjs, custo 12
   isActive: true,
   primeiroAcesso: true,
@@ -212,3 +245,20 @@ db.vehicles.createIndex({ plate: 1 })
 5. "Com Alteração" não exige observação obrigatória (pode ficar vazia).
 6. Registro fica "aberto" até devolução ou fechamento pelo admin.
 7. Exclusão remove primeiro as fotos do GridFS e depois o documento.
+
+## 8. Coleção `photo_cleanup_logs` — auditoria da limpeza
+
+```js
+{
+  _id: ObjectId,
+  at: ISODate(...),
+  by: "123456",                     // matrícula do admin
+  action: "purge" | "orphans",
+  recordIds: ["<ObjectId>"],        // vazio em "orphans"
+  photoCount: 10,                   // arquivos efetivamente removidos
+  bytes: 2541343                    // soma de length dos arquivos removidos
+}
+```
+
+- `purge`: limpeza das fotos de registros fechados (seleção da aba Armazenamento).
+- `orphans`: limpeza de arquivos sem referência em `handovers`.

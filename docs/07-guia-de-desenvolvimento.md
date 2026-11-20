@@ -27,14 +27,18 @@ MONGODB_URI=mongodb+srv://<user>:<password>@<cluster-url>/viatura?retryWrites=tr
 JWT_SECRET=um-segredo-super-secreto-troque-isto
 ADMIN_ACCESS_KEY=chave-secreta-do-admin
 MAX_PHOTO_SIZE_MB=2
+STORAGE_LIMIT_MB=512
+PHOTO_BACKUP_TTL_HOURS=24
 ```
 
 | Variável | Obrigatória | Descrição |
 |---|---|---|
 | `MONGODB_URI` | ✅ | String de conexão (banco `viatura`). O app falha na inicialização sem ela |
-| `JWT_SECRET` | 🔮 (fase 2) | Segredo para JWT (autenticação futura) |
-| `ADMIN_ACCESS_KEY` | 🔮 (fase 2) | PIN simples para `/admin` (futuro) |
+| `JWT_SECRET` | ✅ | Segredo para assinar/verificar o JWT de sessão |
+| `ADMIN_ACCESS_KEY` | 🔮 (fase 2) | PIN simples para `/admin` (não usado no momento) |
 | `MAX_PHOTO_SIZE_MB` | Não | Tamanho máximo por foto em MB (padrão `2`) |
+| `STORAGE_LIMIT_MB` | Não | Limite do banco exibido na aba Armazenamento (padrão `512`, Atlas Free) |
+| `PHOTO_BACKUP_TTL_HOURS` | Não | Validade do backup que autoriza a limpeza de fotos (padrão `24`) |
 
 ### MongoDB local (alternativa ao Atlas)
 
@@ -51,6 +55,22 @@ docker run -d --name mongo -p 27017:27017 -e MONGO_INITDB_DATABASE=viatura mongo
 | `npm run build` | Build de produção (gera `public/sw.js` do PWA) |
 | `npm start` | Servidor de produção após `build` |
 | `npm run lint` | ESLint (`next lint`) |
+| `npm run db:seed` | Cria o usuário admin inicial |
+| `npm run db:users` | Popula/atualiza usuários de exemplo |
+| `npm run db:backfill` | Corrige `plate`/`prefix` de registros legados |
+| `npm run db:photo-stats` | Preenche `photoStats` em registros antigos (aceita `-- --dry-run`) |
+
+### Criar o primeiro root
+
+O papel `root` (acesso à aba Armazenamento) não é criado por script. Promova um usuário existente no
+banco `viatura`:
+
+```js
+db.users.updateOne({ matricula: "123456" }, { $set: { role: "root" } })
+```
+
+O papel vai no JWT: o usuário precisa sair e entrar de novo para ver a aba. Depois disso, outros roots
+podem ser criados pela própria tela de Usuários.
 
 ## 4. Verificação rápida de funcionamento
 
@@ -90,7 +110,8 @@ npx vercel             # primeiro deploy
 ```
 
 **Variáveis de ambiente no painel da Vercel (Settings → Environment Variables):** mesmas do `.env.local`
-(`MONGODB_URI`, `JWT_SECRET`, `ADMIN_ACCESS_KEY`, `MAX_PHOTO_SIZE_MB`).
+(`MONGODB_URI`, `JWT_SECRET`, `ADMIN_ACCESS_KEY`, `MAX_PHOTO_SIZE_MB`, `STORAGE_LIMIT_MB`,
+`PHOTO_BACKUP_TTL_HOURS`).
 
 **Atenções de produção:**
 - **Limite de body serverless (~4.5MB na Vercel):** hoje as fotos vão sem compressão; se estourar,
@@ -98,7 +119,9 @@ npx vercel             # primeiro deploy
 - **Timeout serverless:** upload GridFS de 5 fotos pequenas é rápido; OK para o volume atual.
 - **Índices:** criar `handovers.createdAt` e `handovers.plate` no Atlas (ver
   [05-modelagem-de-dados.md](./05-modelagem-de-dados.md#4-índices-recomendados)).
-- **Backup:** habilitar backups no Atlas (fotos inclusas via GridFS).
+- **Backup:** habilitar backups no Atlas (fotos inclusas via GridFS) e usar a aba Armazenamento para
+  baixar ZIPs antes de limpar fotos antigas. O plano gratuito tem limite de **512 MB**
+  (`dataSize + indexSize`); monitore o Logical Size no painel do Atlas.
 
 ### Alternativas
 
@@ -111,3 +134,8 @@ npx vercel             # primeiro deploy
 - Coleção principal: `handovers` (ver [05-modelagem-de-dados.md](./05-modelagem-de-dados.md)).
 - Fotos: GridFS bucket `photos` (`photos.files` + `photos.chunks`).
 - Exclusão de registro remove fotos + documento (ação do admin).
+- **Limpeza de armazenamento (manual):** aba Armazenamento em `/admin` → baixar ZIP → selecionar
+  registros fechados → remover fotos. O documento é mantido com `photosPurged`; registros antigos
+  podem receber `photoStats` com `npm run db:photo-stats` (use `-- --dry-run` primeiro).
+- **Fotos órfãs:** a mesma aba lista e remove arquivos sem referência há mais de 1h.
+- **Auditoria:** operações ficam em `photo_cleanup_logs` (`action`, `by`, `at`, `photoCount`, `bytes`).

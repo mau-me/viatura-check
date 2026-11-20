@@ -23,6 +23,7 @@
 | Lógica de escrita | Server Actions (`'use server'`) | nativo Next 14 |
 | Autenticação (futuro) | jsonwebtoken + bcryptjs | `9.0.3` / `3.0.3` |
 | Utilitários | clsx, tailwind-merge, class-variance-authority, tw-animate-css | — |
+| Exportação ZIP | archiver | `7.0.1` |
 
 > **Nota:** as dependências `jsonwebtoken` e `bcryptjs` já estão instaladas, prontas para a fase 2 de
 > autenticação (ver [03-funcionalidades-futuras.md](./03-funcionalidades-futuras.md#11-autenticação-com-login)).
@@ -40,6 +41,7 @@
 | `/admin` | Página (Client) | Listagem e gestão dos registros |
 | `/admin/[id]` | Página (Client) | Detalhe do registro com fotos |
 | `/api/photos/[id]` | Route Handler | Serve imagem do GridFS (com cache) |
+| `/api/admin/photos/export` | Route Handler | Baixa ZIP com as fotos selecionadas (admin) |
 
 - **Sem middleware global** na fase 1. Quando a autenticação entrar, será criado `middleware.ts`
   protegendo apenas `/admin`.
@@ -52,6 +54,13 @@ contorna o limite de 16MB por documento e permite servir cada foto individualmen
 - Upload/leitura/delete centralizados em `lib/gridfs.ts`.
 - Fotos comprimidas **no cliente** é uma pendência (ver roadmap — Compressão de fotos).
 - Se o volume crescer, migração para S3/R2 é isolada em `lib/gridfs.ts`.
+- **Limite do plano gratuito do Atlas:** 512 MB (`dataSize + indexSize`). A aba Armazenamento usa
+  `dbStats` e a agregação de `photos.files` para exibir o uso (`actions/storage-actions.ts`).
+- **Limpeza manual:** baixa um ZIP com as fotos (`app/api/admin/photos/export/route.ts`) e depois
+  remove apenas os arquivos do GridFS; o documento do `handovers` é preservado com `photosPurged` e
+  `photoStats`. O backup (`photosBackup`) vale por `PHOTO_BACKUP_TTL_HOURS` (padrão 24h).
+- **Estado nos registros:** `photoStats` (contagem/bytes por fase), `photosBackup` e
+  `photosPurged.departure|return`; auditoria em `photo_cleanup_logs`.
 
 ### 2.3 Server Actions
 
@@ -72,7 +81,8 @@ viatura-check/
 ├── postcss.config.mjs         # @tailwindcss/postcss
 ├── components.json            # config shadcn/ui
 ├── actions/
-│   └── handover-actions.ts    # Server Actions (submit, list, getById, delete)
+│   ├── handover-actions.ts    # Server Actions (submit, list, getById, delete)
+│   └── storage-actions.ts     # estatísticas, exportação e limpeza de fotos
 ├── app/
 │   ├── layout.tsx             # raiz (fontes, ThemeProvider, Toaster, metas PWA)
 │   ├── globals.css            # Tailwind v4 + variáveis do tema shadcn
@@ -84,8 +94,10 @@ viatura-check/
 │   │   └── [id]/
 │   │       └── page.tsx       # /admin/[id] → detalhe
 │   └── api/
-│       └── photos/[id]/
-│           └── route.ts       # serve imagem do GridFS
+│       ├── photos/[id]/
+│       │   └── route.ts       # serve imagem do GridFS
+│       └── admin/photos/export/
+│           └── route.ts       # ZIP das fotos para backup
 ├── components/
 │   ├── ui/                    # shadcn (button, card, input, ...)
 │   └── app/
@@ -96,6 +108,7 @@ viatura-check/
 ├── lib/
 │   ├── mongodb.ts             # conexão singleton
 │   ├── gridfs.ts              # upload/leitura/delete de fotos
+│   ├── storage.ts             # limites e TTLs da limpeza de fotos
 │   ├── validation.ts          # schemas Zod + constantes
 │   └── utils.ts               # cn()
 ├── hooks/                     # (vazio — usar para hooks customizados, ex.: use-media-query)
@@ -104,7 +117,9 @@ viatura-check/
 │   ├── icon-192.png / icon-512.png
 │   └── sw.js                  # gerado pelo next-pwa em build
 ├── docs/                      # documentação (ver docs/README.md)
-└── scripts/                   # (futuro) seed-admin.mjs
+└── scripts/                   # seed, backfills e manutenção
+    ├── backfill-handover-prefix.mjs
+    └── backfill-photo-stats.mjs
 ```
 
 ---

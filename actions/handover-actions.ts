@@ -2,11 +2,13 @@
 
 import { revalidatePath } from 'next/cache'
 import { connectToDatabase } from '@/lib/mongodb'
-import { uploadPhoto, deletePhoto } from '@/lib/gridfs'
+import { uploadPhoto, deletePhotos } from '@/lib/gridfs'
 import { departureSchema, returnSchema, PHOTO_KEYS } from '@/lib/validation'
 import { ObjectId, type Db } from 'mongodb'
 import { getSession } from '@/lib/jwt'
 import { findUserByMatricula } from '@/lib/auth'
+import { escapeRegExp } from '@/lib/utils'
+import { isStaff } from '@/lib/roles'
 
 const MAX_PHOTO_SIZE = (parseInt(process.env.MAX_PHOTO_SIZE_MB || '2') || 2) * 1024 * 1024
 
@@ -194,11 +196,16 @@ export async function createDepartureAction(formData: FormData) {
 
     const photoLabel = prefix || plate
     const photoIds: Record<string, string> = {}
+    let departurePhotoBytes = 0
     for (const { key } of PHOTO_KEYS) {
       const file = formData.get(`photo_${key}`) as File | null
-      if (!file || !file.size) return { error: `Foto "${key}" é obrigatória` }
+      if (!file || !file.size) {
+        await deletePhotos(Object.values(photoIds))
+        return { error: `Foto "${key}" é obrigatória` }
+      }
 
       if (file.size > MAX_PHOTO_SIZE) {
+        await deletePhotos(Object.values(photoIds))
         return { error: `Foto "${key}" excede o tamanho máximo de ${MAX_PHOTO_SIZE / 1024 / 1024}MB` }
       }
 
@@ -207,34 +214,45 @@ export async function createDepartureAction(formData: FormData) {
         const buffer = Buffer.from(await file.arrayBuffer())
         const id = await uploadPhoto(buffer, `${photoLabel}_${key}_departure.jpg`, file.type || 'image/jpeg')
         photoIds[key] = id
+        departurePhotoBytes += buffer.length
       } catch (uploadError) {
+        await deletePhotos(Object.values(photoIds))
         console.error(`Erro no upload da foto "${key}":`, uploadError)
         return { error: `Falha no upload da foto "${key}": ${(uploadError as Error).message}` }
       }
     }
 
     const now = new Date()
-    const result = await db.collection('handovers').insertOne({
-      status: 'aberto',
-      plate: parsed.data.plate || '',
-      prefix: parsed.data.prefix || '',
-      departureOfficer: parsed.data.departureOfficer,
-      deliveringOfficer: parsed.data.deliveringOfficer,
-      garrisonCommander: parsed.data.garrisonCommander,
-      serviceType: parsed.data.serviceType,
-      serviceTypeOther: parsed.data.serviceTypeOther || '',
-      returnOfficer: null,
-      kilometers: { initial: parsed.data.km_initial, final: null },
-      departureChecklist: parsed.data.departureChecklist,
-      departureChecklistObs: parsed.data.departureChecklistObs || {},
-      departureObservations: parsed.data.departureObservations || '',
-      departurePhotos: photoIds,
-      returnPhotos: null,
-      returnObservations: null,
-      returnedAt: null,
-      createdAt: now,
-      updatedAt: now,
-    })
+    let result
+    try {
+      result = await db.collection('handovers').insertOne({
+        status: 'aberto',
+        plate: parsed.data.plate || '',
+        prefix: parsed.data.prefix || '',
+        departureOfficer: parsed.data.departureOfficer,
+        deliveringOfficer: parsed.data.deliveringOfficer,
+        garrisonCommander: parsed.data.garrisonCommander,
+        serviceType: parsed.data.serviceType,
+        serviceTypeOther: parsed.data.serviceTypeOther || '',
+        returnOfficer: null,
+        kilometers: { initial: parsed.data.km_initial, final: null },
+        departureChecklist: parsed.data.departureChecklist,
+        departureChecklistObs: parsed.data.departureChecklistObs || {},
+        departureObservations: parsed.data.departureObservations || '',
+        departurePhotos: photoIds,
+        photoStats: {
+          departure: { count: Object.keys(photoIds).length, bytes: departurePhotoBytes },
+        },
+        returnPhotos: null,
+        returnObservations: null,
+        returnedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      })
+    } catch (insertError) {
+      await deletePhotos(Object.values(photoIds))
+      throw insertError
+    }
 
     revalidatePath('/')
     revalidatePath('/admin')
@@ -281,11 +299,16 @@ export async function completeReturnAction(id: string, formData: FormData) {
 
     const photoLabel = (doc.prefix as string) || (doc.plate as string)
     const photoIds: Record<string, string> = {}
+    let returnPhotoBytes = 0
     for (const { key } of PHOTO_KEYS) {
       const file = formData.get(`return_photo_${key}`) as File | null
-      if (!file || !file.size) return { error: `Foto "${key}" é obrigatória na devolução` }
+      if (!file || !file.size) {
+        await deletePhotos(Object.values(photoIds))
+        return { error: `Foto "${key}" é obrigatória na devolução` }
+      }
 
       if (file.size > MAX_PHOTO_SIZE) {
+        await deletePhotos(Object.values(photoIds))
         return { error: `Foto "${key}" excede o tamanho máximo de ${MAX_PHOTO_SIZE / 1024 / 1024}MB` }
       }
 
@@ -294,27 +317,35 @@ export async function completeReturnAction(id: string, formData: FormData) {
         const buffer = Buffer.from(await file.arrayBuffer())
         const id = await uploadPhoto(buffer, `${photoLabel}_${key}_return.jpg`, file.type || 'image/jpeg')
         photoIds[key] = id
+        returnPhotoBytes += buffer.length
       } catch (uploadError) {
+        await deletePhotos(Object.values(photoIds))
         console.error(`Erro no upload da foto "${key}":`, uploadError)
         return { error: `Falha no upload da foto "${key}": ${(uploadError as Error).message}` }
       }
     }
 
     const now = new Date()
-    await db.collection('handovers').updateOne(
-      { _id: new ObjectId(id) },
-      {
-        $set: {
-          status: 'fechado',
-          returnOfficer: parsedReturn.data.returnOfficer,
-          kilometers: { initial: doc.kilometers.initial, final: parsedReturn.data.km_final },
-          returnPhotos: photoIds,
-          returnObservations: parsedReturn.data.returnObservations || '',
-          returnedAt: now,
-          updatedAt: now,
-        },
-      }
-    )
+    try {
+      await db.collection('handovers').updateOne(
+        { _id: new ObjectId(id) },
+        {
+          $set: {
+            status: 'fechado',
+            returnOfficer: parsedReturn.data.returnOfficer,
+            kilometers: { initial: doc.kilometers.initial, final: parsedReturn.data.km_final },
+            returnPhotos: photoIds,
+            'photoStats.return': { count: Object.keys(photoIds).length, bytes: returnPhotoBytes },
+            returnObservations: parsedReturn.data.returnObservations || '',
+            returnedAt: now,
+            updatedAt: now,
+          },
+        }
+      )
+    } catch (updateError) {
+      await deletePhotos(Object.values(photoIds))
+      throw updateError
+    }
 
     revalidatePath('/')
     revalidatePath('/admin')
@@ -332,7 +363,7 @@ export async function adminCloseHandoverAction(id: string) {
 
     const { db } = await connectToDatabase()
     const user = await db.collection('users').findOne({ matricula: session.matricula })
-    if (!user || user.role !== 'admin') return { error: 'Apenas administradores podem fechar registros' }
+    if (!user || !isStaff(user.role)) return { error: 'Apenas administradores podem fechar registros' }
 
     if (!ObjectId.isValid(id)) return { error: 'ID inválido' }
     const doc = await db.collection('handovers').findOne({ _id: new ObjectId(id) })
@@ -362,6 +393,12 @@ export async function adminCloseHandoverAction(id: string) {
 
 export async function getOpenHandoverByOfficer(matricula: string) {
   try {
+    const session = await getSession()
+    if (!session) return { error: 'Não autenticado' }
+    if (!isStaff(session.role) && session.matricula !== matricula) {
+      return { error: 'Acesso negado' }
+    }
+
     const { db } = await connectToDatabase()
     const doc = await db.collection('handovers').findOne(
       { status: 'aberto', 'departureOfficer.matricula': matricula },
@@ -386,17 +423,25 @@ export async function getOpenHandoverByOfficer(matricula: string) {
 
 export async function getHandoversAction(query = '', status: 'abertos' | 'fechados' | 'todos' = 'todos') {
   try {
+    const session = await getSession()
+    if (!session) return { error: 'Não autenticado' }
+
     const { db } = await connectToDatabase()
 
     const filters: Record<string, unknown>[] = []
 
+    if (!isStaff(session.role)) {
+      filters.push({ 'departureOfficer.matricula': session.matricula })
+    }
+
     if (query) {
+      const term = escapeRegExp(query)
       filters.push({
         $or: [
-          { prefix: { $regex: query, $options: 'i' } },
-          { plate: { $regex: query, $options: 'i' } },
-          { 'departureOfficer.nome': { $regex: query, $options: 'i' } },
-          { 'departureOfficer.matricula': { $regex: query, $options: 'i' } },
+          { prefix: { $regex: term, $options: 'i' } },
+          { plate: { $regex: term, $options: 'i' } },
+          { 'departureOfficer.nome': { $regex: term, $options: 'i' } },
+          { 'departureOfficer.matricula': { $regex: term, $options: 'i' } },
         ],
       })
     }
@@ -431,6 +476,7 @@ export async function getHandoversAction(query = '', status: 'abertos' | 'fechad
         kilometers: d.kilometers,
         createdAt: d.createdAt,
         returnedAt: d.returnedAt,
+        photosPurged: d.photosPurged,
         hasDepartureAlteration: Object.values(d.departureChecklist || {}).includes('alteracao'),
         }
       }),
@@ -443,10 +489,16 @@ export async function getHandoversAction(query = '', status: 'abertos' | 'fechad
 
 export async function getHandoverByIdAction(id: string) {
   try {
+    const session = await getSession()
+    if (!session) return { error: 'Não autenticado' }
+
     if (!ObjectId.isValid(id)) return { error: 'ID inválido' }
     const { db } = await connectToDatabase()
     const doc = await db.collection('handovers').findOne({ _id: new ObjectId(id) })
     if (!doc) return { error: 'Registro não encontrado' }
+    if (!isStaff(session.role) && doc.departureOfficer?.matricula !== session.matricula) {
+      return { error: 'Acesso negado' }
+    }
     const resolved = await resolveVehicle(db, doc)
     return {
       success: true,
@@ -465,18 +517,20 @@ export async function getHandoverByIdAction(id: string) {
 
 export async function deleteHandoverAction(id: string) {
   try {
+    const session = await getSession()
+    if (!session) return { error: 'Não autenticado' }
+    if (!isStaff(session.role)) return { error: 'Apenas administradores podem excluir registros' }
+
     if (!ObjectId.isValid(id)) return { error: 'ID inválido' }
     const { db } = await connectToDatabase()
     const doc = await db.collection('handovers').findOne({ _id: new ObjectId(id) })
     if (!doc) return { error: 'Registro não encontrado' }
 
-    const allPhotoKeys = [...PHOTO_KEYS]
-    for (const { key } of allPhotoKeys) {
-      const depPid = doc.departurePhotos?.[key]
-      if (depPid) await deletePhoto(depPid)
-      const retPid = doc.returnPhotos?.[key]
-      if (retPid) await deletePhoto(retPid)
-    }
+    const photoIds = [
+      ...Object.values(doc.departurePhotos || {}),
+      ...Object.values(doc.returnPhotos || {}),
+    ].filter((pid): pid is string => typeof pid === 'string')
+    await deletePhotos(photoIds)
 
     await db.collection('handovers').deleteOne({ _id: new ObjectId(id) })
     revalidatePath('/')

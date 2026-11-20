@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { Loader2, Search, Lock, Trash2 } from 'lucide-react'
+import { Loader2, Search, Lock, Trash2, ImageOff } from 'lucide-react'
 
 interface HandoverRecord {
   _id: string
@@ -32,6 +32,7 @@ interface HandoverRecord {
   createdAt: Date
   returnedAt: Date | null
   hasDepartureAlteration: boolean
+  photosPurged?: { departure?: { at: Date | string }; return?: { at: Date | string } }
 }
 
 type FilterStatus = 'todos' | 'abertos' | 'fechados'
@@ -161,6 +162,12 @@ export function AdminRecordsClient() {
                 </div>
                 <div className="flex items-center gap-2">
                   {r.hasDepartureAlteration && <Badge variant="destructive">Com Alteração</Badge>}
+                  {(r.photosPurged?.departure || r.photosPurged?.return) && (
+                    <Badge variant="outline">
+                      <ImageOff className="mr-1 h-3 w-3" />
+                      Fotos removidas
+                    </Badge>
+                  )}
                   {r.status === 'aberto' && (
                     <Button
                       variant="outline"

@@ -41,15 +41,17 @@
 ### 1.5 `/admin` — Administração
 
 - **Tipo:** Server Component → AdminLayoutClient (`app/admin/page.tsx`)
-- **Acesso:** admin apenas (role `admin`)
+- **Acesso:** admin e root (aba Armazenamento só para root)
 - **Tabs:**
   - **Registros:** lista com filtro (Todos / Em Aberto / Fechados), busca, exclusão, fechamento
   - **Usuários:** CRUD de usuários
+  - **Viaturas:** CRUD de viaturas
+  - **Armazenamento:** uso do banco, download de fotos em ZIP e limpeza de fotos
 
 ### 1.6 `/admin/[id]` — Detalhe do registro
 
 - **Tipo:** Server Component → AdminLayoutClient → HandoverDetailClient (`app/admin/[id]/page.tsx`)
-- **Acesso:** admin apenas
+- **Acesso:** admin e root
 - **Conteúdo:** duas seções (Carga + Devolução), checklist, fotos de ambas as fases
 
 ### 1.7 `/login` — Login
@@ -80,6 +82,20 @@
 - **Arquivo:** `app/api/auth/logout/route.ts`
 - **Ação:** remove cookie de sessão.
 
+### 2.4 `GET /api/admin/photos/export`
+
+- **Arquivo:** `app/api/admin/photos/export/route.ts`
+- **Acesso:** root apenas (`requireRoot`)
+- **Query:** `?ids=<ObjectId>,<ObjectId>,...` (até 50 registros fechados)
+- **Resposta:**
+  - `200` — ZIP (`Content-Disposition: attachment; filename="fotos-viaturas-YYYY-MM-DD.zip"`)
+  - `400` — nenhum ID, ID inválido, limite excedido ou nenhuma foto disponível
+  - `403` — sem sessão ou sem papel `root`
+  - `404` — nenhum dos registros encontrado
+- **Conteúdo do ZIP:** uma pasta por registro (`<prefixo>_<AAAA-MM-DD>_<6 últimos do id>/`) com
+  `registro.json`, `carga/` e `devolucao/`. Ao final, grava `photosBackup = { at, by }` nos
+  documentos incluídos (habilita a limpeza por 24h).
+
 ---
 
 ## 3. Server Actions
@@ -91,10 +107,10 @@
 | `createDepartureAction(formData)` | Cria registro de carga (status "aberto") |
 | `completeReturnAction(id, formData)` | Finaliza devolução (status "fechado") |
 | `adminCloseHandoverAction(id)` | Admin fecha registro em aberto |
-| `getOpenHandoverByOfficer(matricula)` | Busca registro aberto de um policial |
-| `getHandoversAction(query?, status?)` | Lista registros com filtro (abertos/fechados/todos) |
-| `getHandoverByIdAction(id)` | Retorna registro completo |
-| `deleteHandoverAction(id)` | Exclui registro e fotos |
+| `getOpenHandoverByOfficer(matricula)` | Busca registro aberto de um policial (valida sessão) |
+| `getHandoversAction(query?, status?)` | Lista registros (não-admin vê apenas os próprios) |
+| `getHandoverByIdAction(id)` | Retorna registro completo (admin ou dono) |
+| `deleteHandoverAction(id)` | Exclui registro e fotos (admin) |
 
 ### 3.2 `actions/auth-actions.ts`
 
@@ -111,6 +127,18 @@
 | `changePasswordAction(prev, formData)` | Altera senha (logueado) |
 | `adminClearUserPasswordAction(id)` | Admin limpa senha de usuário |
 
+### 3.3 `actions/storage-actions.ts`
+
+Todas exigem papel `root` (`requireRoot`, conferido no banco).
+
+| Action | Descrição |
+|---|---|
+| `getStorageStatsAction()` | Uso do banco (`dbStats`), fotos, registros e estimativas |
+| `getPhotoCleanupCandidatesAction()` | Registros fechados com fotos e seus backups/purges |
+| `purgeHandoverPhotosAction(ids)` | Remove fotos selecionadas (exige backup recente; mantém o documento) |
+| `getOrphanPhotosAction()` | Lista fotos sem referência há mais de 1h |
+| `purgeOrphanPhotosAction()` | Remove fotos órfãs (bloqueado sem registros) |
+
 ---
 
 ## 4. Middleware
@@ -120,4 +148,4 @@
 - **Regras:**
   - `/login` com sessão válida → redireciona para `/`
   - Rota protegida sem sessão → redireciona para `/login`
-  - `/admin` sem role `admin` → redireciona para `/`
+  - `/admin` sem papel `admin` ou `root` → redireciona para `/`
